@@ -914,30 +914,35 @@
 
   <div id="compareContent" style="display:none">
 
-    <div class="card">
-      <div class="card-title">Seleccionar actividades a comparar</div>
-      <div id="compareSelector" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
-      <button class="btn btn-primary" onclick="runComparison()">Comparar seleccionadas</button>
+    <!-- TRAY: selected for comparison -->
+    <div class="card" id="compareTrayCard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <div class="card-title" style="margin:0">Actividades seleccionadas para comparar</div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost" onclick="clearCompareTray()">Limpiar selección</button>
+          <button class="btn btn-primary" id="btnRunCompare" onclick="runComparison()" disabled style="opacity:0.4">Comparar</button>
+        </div>
+      </div>
+      <div id="compareTray" style="display:flex;flex-wrap:wrap;gap:8px;min-height:44px;padding:8px;background:var(--surface2);border:1px dashed var(--border);border-radius:6px">
+        <span style="color:var(--text-dim);font-size:12px;align-self:center;padding:0 4px">Selecciona actividades de las carpetas de abajo ↓</span>
+      </div>
     </div>
 
-    <div id="compareResults" style="display:none">
+    <!-- CATEGORY BROWSERS -->
+    <div id="compareBrowser"></div>
 
-      <!-- RADAR / OVERVIEW -->
+    <!-- RESULTS -->
+    <div id="compareResults" style="display:none">
       <div class="grid-2">
         <div class="card">
           <div class="card-title">FC Máx comparada</div>
-          <div class="chart-wrapper">
-            <canvas id="compareMaxChart"></canvas>
-          </div>
+          <div class="chart-wrapper"><canvas id="compareMaxChart"></canvas></div>
         </div>
         <div class="card">
           <div class="card-title">Tiempo en zonas — comparativa</div>
-          <div class="chart-wrapper">
-            <canvas id="compareZoneChart"></canvas>
-          </div>
+          <div class="chart-wrapper"><canvas id="compareZoneChart"></canvas></div>
         </div>
       </div>
-
       <div class="card">
         <div class="card-title">Tabla comparativa detallada</div>
         <div style="overflow-x:auto">
@@ -947,15 +952,12 @@
           </table>
         </div>
       </div>
-
       <div class="card">
         <div class="card-title">FC en el tiempo — superposición</div>
-        <div class="chart-wrapper-tall">
-          <canvas id="compareLineChart"></canvas>
-        </div>
+        <div class="chart-wrapper-tall"><canvas id="compareLineChart"></canvas></div>
       </div>
-
     </div>
+
   </div>
 </div>
 
@@ -1502,13 +1504,17 @@ function parseTCX(content, filename) {
     if (timeEl) timestamps.push(new Date(timeEl.textContent));
   });
 
-  const actName = doc.querySelector('Activity')?.getAttribute('Sport') || name;
+  // Sport field is the most reliable source — try it first
+  const sportAttr = doc.querySelector('Activity')?.getAttribute('Sport') || '';
+  const typeFromSport = detectTypeFromSport(sportAttr);
+  const type = typeFromSport || detectType(name) || detectType(sportAttr);
+
   const startTime = timestamps[0] || new Date();
   const duration = timestamps.length > 1
     ? Math.round((timestamps[timestamps.length-1] - timestamps[0]) / 60000)
     : Math.round(hrData.length / 2);
 
-  return buildActivity(actName, hrData, startTime, duration, detectType(actName));
+  return buildActivity(name, hrData, startTime, duration, type);
 }
 
 function parseCSV(content, filename) {
@@ -1553,12 +1559,22 @@ function buildActivity(name, hrData, startTime, duration, type) {
   };
 }
 
+function detectTypeFromSport(sport) {
+  // Direct mapping from TCX Sport field (Zepp/Garmin standard values)
+  const s = (sport || '').toLowerCase().trim();
+  if (s === 'biking' || s === 'cycling' || s === 'mountainbiking' || s === 'mountain_biking' || s === 'bike') return 'mtb';
+  if (s === 'hiking' || s === 'walking' || s === 'trail' || s === 'trekking' || s === 'outdoor_walking') return 'hiking';
+  if (s === 'running' || s === 'trail_running') return 'run';
+  if (s === 'strength_training' || s === 'crossfit' || s === 'hiit' || s === 'workout' || s === 'functional_training' || s === 'indoor_fitness') return 'wod';
+  return null; // unknown — fall through to name detection
+}
+
 function detectType(name) {
-  const n = name.toLowerCase();
-  if (n.includes('bike') || n.includes('mtb') || n.includes('cicl') || n.includes('cycling')) return 'mtb';
-  if (n.includes('hike') || n.includes('walk') || n.includes('caminata') || n.includes('trail') || n.includes('montaña')) return 'hiking';
-  if (n.includes('wod') || n.includes('crossfit') || n.includes('hiit') || n.includes('funcional')) return 'wod';
-  if (n.includes('run') || n.includes('corre')) return 'run';
+  const n = (name || '').toLowerCase();
+  if (n.includes('bike') || n.includes('mtb') || n.includes('cicl') || n.includes('cycling') || n.includes('bicicleta')) return 'mtb';
+  if (n.includes('hike') || n.includes('hiking') || n.includes('walk') || n.includes('caminata') || n.includes('trail') || n.includes('montaña') || n.includes('senderismo')) return 'hiking';
+  if (n.includes('wod') || n.includes('crossfit') || n.includes('hiit') || n.includes('funcional') || n.includes('strength') || n.includes('workout')) return 'wod';
+  if (n.includes('run') || n.includes('corre') || n.includes('running')) return 'run';
   return 'other';
 }
 
