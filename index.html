@@ -726,6 +726,49 @@
     </label>
   </div>
 
+  <!-- BACKUP CARD -->
+  <div class="card">
+    <div class="card-title">💾 Copia de seguridad del historial</div>
+    <div class="grid-2" style="gap:16px;margin-bottom:16px">
+
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px">
+        <div style="font-size:28px;margin-bottom:8px">📤</div>
+        <div style="font-weight:600;margin-bottom:6px">Exportar historial</div>
+        <p style="color:var(--text-dim);font-size:12px;margin-bottom:14px;line-height:1.5">
+          Descarga un archivo <strong>.json</strong> con todas tus actividades. Guárdalo en iCloud, Google Drive o donde prefieras. Es tu copia de seguridad permanente.
+        </p>
+        <button class="btn btn-primary" onclick="exportHistory()" style="width:100%">Exportar historial</button>
+      </div>
+
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:20px">
+        <div style="font-size:28px;margin-bottom:8px">📥</div>
+        <div style="font-weight:600;margin-bottom:6px">Restaurar historial</div>
+        <p style="color:var(--text-dim);font-size:12px;margin-bottom:14px;line-height:1.5">
+          Carga un archivo <strong>.json</strong> exportado anteriormente para recuperar todas tus actividades en cualquier dispositivo.
+        </p>
+        <label style="display:block">
+          <input type="file" id="restoreInput" accept=".json" onchange="importHistory(this)" style="display:none">
+          <span class="btn btn-ghost" onclick="document.getElementById('restoreInput').click()" style="display:block;text-align:center;cursor:pointer">Restaurar historial</span>
+        </label>
+      </div>
+
+    </div>
+
+    <div id="backupStatus" class="alert alert-ok" style="display:none">
+      <span class="alert-icon">✅</span>
+      <div class="alert-text" id="backupStatusText"></div>
+    </div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:14px;margin-top:4px">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--text-dim);margin-bottom:8px">ESTADO DEL HISTORIAL</div>
+      <div style="display:flex;gap:24px;flex-wrap:wrap">
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--accent)" id="backupCount">0</span> <span style="font-size:11px;color:var(--text-dim)">actividades guardadas</span></div>
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:18px;color:var(--accent3)" id="backupSize">0 KB</span> <span style="font-size:11px;color:var(--text-dim)">tamaño del historial</span></div>
+        <div><span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-dim)" id="backupLastSave">—</span></div>
+      </div>
+    </div>
+  </div>
+
   <div class="card" id="activityListCard">
     <div class="compare-header">
       <div class="card-title" style="margin:0">Actividades cargadas</div>
@@ -1202,9 +1245,25 @@ function renderProfileZones() {
   `).join('');
 }
 
-// ========== FILE PARSING ==========
+// ========== FILE QUEUE (handles batch imports one by one) ==========
+let fileQueue = [];
+let processingQueue = false;
+
 function handleFiles(files) {
-  Array.from(files).forEach(file => parseFile(file));
+  fileQueue.push(...Array.from(files));
+  processNextInQueue();
+}
+
+function processNextInQueue() {
+  if (processingQueue || fileQueue.length === 0) return;
+  processingQueue = true;
+  const file = fileQueue.shift();
+  parseFile(file);
+}
+
+function onFileProcessed() {
+  processingQueue = false;
+  processNextInQueue();
 }
 
 function parseFile(file) {
@@ -1220,26 +1279,162 @@ function parseFile(file) {
     } else if (file.name.toLowerCase().endsWith('.csv')) {
       activity = parseCSV(content, file.name);
     } else {
-      // Try TCX first (most common from Zepp), then GPX
       activity = parseTCX(content, file.name);
       if (!activity || activity.hrData.length === 0) activity = parseGPX(content, file.name);
     }
 
     if (activity && activity.hrData.length > 0) {
       activity.id = Date.now() + Math.random();
-      // If type not detected, open classify modal
       if (activity.type === 'other') {
+        // Modal will call onFileProcessed when done
         openModal(activity, file.name);
       } else {
         activities.push(activity);
+        saveToStorage();
         renderActivityList();
         updateComparePanel();
+        onFileProcessed();
       }
     } else {
       alert(`No se encontraron datos de FC en ${file.name}`);
+      onFileProcessed();
     }
   };
   reader.readAsText(file);
+}
+
+// ========== LOCAL STORAGE + BACKUP SYSTEM ==========
+function saveToStorage() {
+  try {
+    const toSave = activities.map(a => ({
+      ...a,
+      startTime: a.startTime.toISOString(),
+    }));
+    const payload = {
+      version: 1,
+      savedAt: new Date().toISOString(),
+      activities: toSave,
+    };
+    localStorage.setItem('hranalyzer_activities', JSON.stringify(payload));
+    updateBackupStatus();
+  } catch(e) {
+    console.warn('No se pudo guardar en localStorage:', e);
+  }
+}
+
+function loadFromStorage() {
+  try {
+    const raw = localStorage.getItem('hranalyzer_activities');
+    if (!raw) return;
+    const payload = JSON.parse(raw);
+    const list = payload.activities || payload; // backwards compat
+    activities = list.map(a => ({
+      ...a,
+      startTime: new Date(a.startTime),
+    }));
+    renderActivityList();
+    updateComparePanel();
+    updateBackupStatus();
+  } catch(e) {
+    console.warn('No se pudo cargar el histórico:', e);
+  }
+}
+
+function updateBackupStatus() {
+  const raw = localStorage.getItem('hranalyzer_activities');
+  const sizeKB = raw ? Math.round(raw.length / 1024) : 0;
+  let savedAt = '—';
+  try {
+    const p = JSON.parse(raw);
+    if (p.savedAt) {
+      const d = new Date(p.savedAt);
+      savedAt = `Último guardado: ${d.toLocaleDateString('es-ES')} ${d.toLocaleTimeString('es-ES', {hour:'2-digit', minute:'2-digit'})}`;
+    }
+  } catch(e) {}
+  document.getElementById('backupCount').textContent = activities.length;
+  document.getElementById('backupSize').textContent = `${sizeKB} KB`;
+  document.getElementById('backupLastSave').textContent = savedAt;
+}
+
+// ========== EXPORT HISTORY ==========
+function exportHistory() {
+  if (activities.length === 0) {
+    alert('No hay actividades para exportar.');
+    return;
+  }
+  const toSave = activities.map(a => ({
+    ...a,
+    startTime: a.startTime.toISOString(),
+  }));
+  const payload = {
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    exportedBy: profile.name || 'Deportista',
+    activityCount: toSave.length,
+    activities: toSave,
+  };
+  const json = JSON.stringify(payload, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = `hranalyzer_historial_${date}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  showBackupAlert('ok', `✅ Historial exportado correctamente — ${toSave.length} actividades · ${Math.round(json.length/1024)} KB. Guarda el archivo en iCloud Drive o Google Drive para tenerlo siempre disponible.`);
+}
+
+// ========== IMPORT HISTORY ==========
+function importHistory(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const payload = JSON.parse(e.target.result);
+      const list = payload.activities || payload;
+
+      if (!Array.isArray(list) || list.length === 0) {
+        alert('El archivo no contiene actividades válidas.');
+        return;
+      }
+
+      const imported = list.map(a => ({
+        ...a,
+        startTime: new Date(a.startTime),
+      }));
+
+      // Merge: avoid duplicates by id
+      const existingIds = new Set(activities.map(a => a.id));
+      const newOnes = imported.filter(a => !existingIds.has(a.id));
+      const duplicates = imported.length - newOnes.length;
+
+      activities = [...activities, ...newOnes];
+      saveToStorage();
+      renderActivityList();
+      updateComparePanel();
+
+      let msg = `📥 Historial restaurado — ${newOnes.length} actividades importadas.`;
+      if (duplicates > 0) msg += ` (${duplicates} ya existían y se omitieron).`;
+      showBackupAlert('ok', msg);
+
+    } catch(err) {
+      alert('Error al leer el archivo. Asegúrate de que es un historial exportado por esta app.');
+    }
+    input.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function showBackupAlert(type, text) {
+  const el = document.getElementById('backupStatus');
+  const textEl = document.getElementById('backupStatusText');
+  el.className = `alert alert-${type}`;
+  el.style.display = 'flex';
+  textEl.textContent = text;
+  setTimeout(() => { el.style.display = 'none'; }, 6000);
 }
 
 function parseGPX(content, filename) {
@@ -1505,14 +1700,29 @@ function confirmClassify() {
     activities[document._editIdx].type = modalSelectedType;
     window._editMode = false;
     document._editIdx = undefined;
+    document.getElementById('classifyModal').classList.remove('open');
+    pendingActivity = null;
+    // edit mode doesn't need queue continuation
   } else if (pendingActivity) {
     pendingActivity.name = name;
     pendingActivity.type = modalSelectedType;
     activities.push(pendingActivity);
+    pendingActivity = null;
+    document.getElementById('classifyModal').classList.remove('open');
+    onFileProcessed(); // next file in queue
   }
-  closeModal();
+  saveToStorage();
   renderActivityList();
   updateComparePanel();
+}
+
+function closeModal() {
+  document.getElementById('classifyModal').classList.remove('open');
+  const wasQueued = !window._editMode && pendingActivity !== null;
+  pendingActivity = null;
+  window._editMode = false;
+  document._editIdx = undefined;
+  if (wasQueued) onFileProcessed(); // skip cancelled file, continue queue
 }
 
 // ========== RENDER ACTIVITY LIST (GROUPED) ==========
@@ -1591,13 +1801,16 @@ function deleteActivity(idx) {
   const a = activities[idx];
   if (selectedActivity === a) selectedActivity = null;
   activities.splice(idx, 1);
+  saveToStorage();
   renderActivityList();
   updateComparePanel();
 }
 
 function clearAll() {
+  if (!confirm('¿Eliminar todas las actividades del historial?')) return;
   activities = [];
   selectedActivity = null;
+  localStorage.removeItem('hranalyzer_activities');
   renderActivityList();
   updateComparePanel();
   document.getElementById('analyzeContent').style.display = 'none';
@@ -2061,6 +2274,7 @@ uploadArea.addEventListener('drop', e => {
 // INIT
 updateProfile();
 renderProfileZones();
+loadFromStorage();
 </script>
 </body>
 </html>
