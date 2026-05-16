@@ -512,6 +512,109 @@
   }
   .checkbox-label input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; }
 
+  /* CATEGORY GROUP */
+  .cat-group { margin-bottom: 24px; }
+  .cat-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px 6px 0 0;
+    border-bottom: none;
+  }
+  .cat-header-icon { font-size: 20px; }
+  .cat-header-name {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 18px;
+    letter-spacing: 3px;
+    color: var(--text);
+    flex: 1;
+  }
+  .cat-header-stats {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-align: right;
+    line-height: 1.5;
+  }
+  .cat-body { border: 1px solid var(--border); border-radius: 0 0 6px 6px; overflow: hidden; }
+  .cat-body .activity-item { border-radius: 0; border-left: none; border-right: none; border-top: none; margin-bottom: 0; }
+  .cat-body .activity-item:last-child { border-bottom: none; }
+  .cat-body .activity-item:first-child { border-top: 1px solid var(--border); }
+
+  /* FILTER CHIPS */
+  .filter-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .chip:hover { border-color: var(--text-mid); color: var(--text-mid); }
+  .chip.active { background: var(--accent); border-color: var(--accent); color: var(--bg); font-weight: 700; }
+  .chip-mtb.active { background: var(--z5); border-color: var(--z5); }
+  .chip-hiking.active { background: var(--z2); border-color: var(--z2); }
+  .chip-wod.active { background: var(--z4); border-color: var(--z4); }
+  .chip-run.active { background: var(--accent); border-color: var(--accent); }
+
+  /* CLASSIFY MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px;
+    width: 90%;
+    max-width: 480px;
+    animation: fadeIn 0.2s ease;
+  }
+  .modal h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  .modal p { color: var(--text-dim); font-size: 12px; margin-bottom: 20px; }
+  .modal-field { margin-bottom: 16px; }
+  .modal-field label { display: block; font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 6px; text-transform: uppercase; }
+  .modal-field input[type=text] { width: 100%; text-align: left; }
+  .type-selector { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .type-btn {
+    padding: 12px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-mid);
+    cursor: pointer;
+    text-align: center;
+    font-size: 11px;
+    font-family: 'JetBrains Mono', monospace;
+    transition: all 0.2s;
+  }
+  .type-btn .type-icon { font-size: 24px; display: block; margin-bottom: 4px; }
+  .type-btn:hover { border-color: var(--text-mid); }
+  .type-btn.selected { border-color: var(--accent); background: rgba(0,229,255,0.1); color: var(--accent); }
+  .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
   /* PROFILE CONFIG */
   .config-row {
     display: flex;
@@ -549,6 +652,31 @@
 </style>
 </head>
 <body>
+<!-- CLASSIFY MODAL -->
+<div class="modal-overlay" id="classifyModal">
+  <div class="modal">
+    <h3>Clasificar actividad</h3>
+    <p id="modalFilename" style="color:var(--text-mid);font-size:13px;margin-bottom:16px"></p>
+    <div class="modal-field">
+      <label>Nombre de la actividad</label>
+      <input type="text" id="modalName" placeholder="Ej: MTB Collserola Norte">
+    </div>
+    <div class="modal-field">
+      <label>Tipo de actividad</label>
+      <div class="type-selector">
+        <div class="type-btn" id="typebtn-mtb" onclick="selectType('mtb')"><span class="type-icon">🚵</span>MTB</div>
+        <div class="type-btn" id="typebtn-hiking" onclick="selectType('hiking')"><span class="type-icon">🥾</span>HIKING</div>
+        <div class="type-btn" id="typebtn-wod" onclick="selectType('wod')"><span class="type-icon">🏋️</span>WOD</div>
+        <div class="type-btn" id="typebtn-run" onclick="selectType('run')"><span class="type-icon">🏃</span>RUNNING</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="confirmClassify()">Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 
 <!-- HEADER -->
@@ -603,6 +731,15 @@
       <div class="card-title" style="margin:0">Actividades cargadas</div>
       <button class="btn btn-ghost" onclick="clearAll()">Limpiar todo</button>
     </div>
+
+    <div class="filter-chips" id="filterChips" style="margin-top:14px">
+      <button class="chip active" onclick="setFilter('all', this)">TODAS</button>
+      <button class="chip chip-mtb" onclick="setFilter('mtb', this)">🚵 MTB</button>
+      <button class="chip chip-hiking" onclick="setFilter('hiking', this)">🥾 HIKING</button>
+      <button class="chip chip-wod" onclick="setFilter('wod', this)">🏋️ WOD</button>
+      <button class="chip chip-run" onclick="setFilter('run', this)">🏃 RUNNING</button>
+    </div>
+
     <div id="activityList">
       <div class="empty-state">
         <div class="icon">📂</div>
@@ -1000,6 +1137,9 @@ let activities = [];
 let selectedActivity = null;
 let charts = {};
 let profile = { age: 62, restHR: 52, maxHR: 172, name: 'Deportista' };
+let activeFilter = 'all';
+let pendingActivity = null; // activity waiting for classification
+let modalSelectedType = 'other';
 
 // ========== PROFILE & ZONES ==========
 function getZones() {
@@ -1079,13 +1219,22 @@ function parseFile(file) {
       activity = parseTCX(content, file.name);
     } else if (file.name.toLowerCase().endsWith('.csv')) {
       activity = parseCSV(content, file.name);
+    } else {
+      // Try TCX first (most common from Zepp), then GPX
+      activity = parseTCX(content, file.name);
+      if (!activity || activity.hrData.length === 0) activity = parseGPX(content, file.name);
     }
 
     if (activity && activity.hrData.length > 0) {
       activity.id = Date.now() + Math.random();
-      activities.push(activity);
-      renderActivityList();
-      updateComparePanel();
+      // If type not detected, open classify modal
+      if (activity.type === 'other') {
+        openModal(activity, file.name);
+      } else {
+        activities.push(activity);
+        renderActivityList();
+        updateComparePanel();
+      }
     } else {
       alert(`No se encontraron datos de FC en ${file.name}`);
     }
@@ -1286,41 +1435,162 @@ function generateDemoHR(warmStart, warmEnd, peak, cruising, sustainedMinutes, to
 
 function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-// ========== RENDER ACTIVITY LIST ==========
+// ========== MODAL ==========
+function openModal(activity, filename) {
+  pendingActivity = activity;
+  modalSelectedType = activity.type !== 'other' ? activity.type : '';
+  document.getElementById('modalFilename').textContent = `Archivo: ${filename}`;
+  document.getElementById('modalName').value = (activity.name && !activity.name.match(/^Zepp\d+/i) && activity.name !== filename) ? activity.name : '';
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+  if (modalSelectedType) document.getElementById(`typebtn-${modalSelectedType}`)?.classList.add('selected');
+  document.getElementById('classifyModal').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('classifyModal').classList.remove('open');
+  pendingActivity = null;
+}
+
+function selectType(type) {
+  modalSelectedType = type;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById(`typebtn-${type}`).classList.add('selected');
+}
+
+function confirmClassify() {
+  if (!pendingActivity) return;
+  const name = document.getElementById('modalName').value.trim();
+  if (!name) { alert('Escribe un nombre para la actividad'); return; }
+  if (!modalSelectedType) { alert('Selecciona el tipo de actividad'); return; }
+  pendingActivity.name = name;
+  pendingActivity.type = modalSelectedType;
+  activities.push(pendingActivity);
+  closeModal();
+  renderActivityList();
+  updateComparePanel();
+}
+
+// ========== FILTER ==========
+function setFilter(filter, el) {
+  activeFilter = filter;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderActivityList();
+}
+
+function editActivity(idx) {
+  const a = activities[idx];
+  pendingActivity = a;
+  modalSelectedType = a.type;
+  document.getElementById('modalFilename').textContent = `Editando actividad`;
+  document.getElementById('modalName').value = a.name;
+  document.querySelectorAll('.type-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById(`typebtn-${a.type}`)?.classList.add('selected');
+  // Override confirm to update existing instead of push
+  document._editIdx = idx;
+  document.getElementById('classifyModal').classList.add('open');
+  // Patch confirmClassify for edit mode
+  window._editMode = true;
+}
+
+// Override confirmClassify to handle edit mode
+const _originalConfirm = null;
+function confirmClassify() {
+  const name = document.getElementById('modalName').value.trim();
+  if (!name) { alert('Escribe un nombre para la actividad'); return; }
+  if (!modalSelectedType) { alert('Selecciona el tipo de actividad'); return; }
+
+  if (window._editMode && document._editIdx !== undefined) {
+    activities[document._editIdx].name = name;
+    activities[document._editIdx].type = modalSelectedType;
+    window._editMode = false;
+    document._editIdx = undefined;
+  } else if (pendingActivity) {
+    pendingActivity.name = name;
+    pendingActivity.type = modalSelectedType;
+    activities.push(pendingActivity);
+  }
+  closeModal();
+  renderActivityList();
+  updateComparePanel();
+}
+
+// ========== RENDER ACTIVITY LIST (GROUPED) ==========
 function renderActivityList() {
   const container = document.getElementById('activityList');
   document.getElementById('activityCount').textContent = `${activities.length} ACTIVIDAD${activities.length !== 1 ? 'ES' : ''}`;
 
-  if (activities.length === 0) {
-    container.innerHTML = `<div class="empty-state"><div class="icon">📂</div><h3>Sin actividades</h3><p>Carga archivos GPX, TCX o CSV</p></div>`;
+  const filtered = activeFilter === 'all' ? activities : activities.filter(a => a.type === activeFilter);
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📂</div><h3>${activities.length === 0 ? 'Sin actividades' : 'Sin resultados'}</h3><p>${activities.length === 0 ? 'Carga archivos GPX, TCX o CSV' : 'No hay actividades de este tipo'}</p></div>`;
     return;
   }
 
-  const typeIcons = { mtb: '🚵', hiking: '🥾', wod: '🏋️', run: '🏃', other: '❤️' };
-  const typeTags = { mtb: 'tag-mtb', hiking: 'tag-hiking', wod: 'tag-wod', run: 'tag-run', other: '' };
-  const typeLabels = { mtb: 'MTB', hiking: 'HIKING', wod: 'WOD', run: 'RUN', other: 'OTROS' };
+  const CATS = [
+    { type: 'mtb',    icon: '🚵', label: 'Mountain Bike',  color: 'var(--z5)' },
+    { type: 'hiking', icon: '🥾', label: 'Hiking / Trail', color: 'var(--z2)' },
+    { type: 'wod',    icon: '🏋️', label: 'WOD / CrossFit', color: 'var(--z4)' },
+    { type: 'run',    icon: '🏃', label: 'Running',        color: 'var(--accent)' },
+    { type: 'other',  icon: '❤️', label: 'Otras',          color: 'var(--text-dim)' },
+  ];
 
-  container.innerHTML = activities.map((a, i) => `
-    <div class="activity-item ${selectedActivity === a ? 'selected' : ''}" onclick="selectActivity(${i})">
-      <div class="activity-type">${typeIcons[a.type] || '❤️'}</div>
-      <div class="activity-info">
-        <div class="activity-name">${a.name}</div>
-        <div class="activity-meta">
-          ${a.startTime.toLocaleDateString('es-ES')} · ${a.duration} min · ${a.hrData.length} puntos FC
+  let html = '';
+
+  CATS.forEach(cat => {
+    const group = filtered
+      .filter(a => a.type === cat.type)
+      .sort((a, b) => b.startTime - a.startTime);
+
+    if (group.length === 0) return;
+
+    const avgMax = Math.round(group.reduce((s, a) => s + a.max, 0) / group.length);
+    const totalMin = group.reduce((s, a) => s + a.duration, 0);
+
+    html += `
+      <div class="cat-group">
+        <div class="cat-header">
+          <span class="cat-header-icon">${cat.icon}</span>
+          <span class="cat-header-name" style="color:${cat.color}">${cat.label}</span>
+          <div class="cat-header-stats">
+            ${group.length} sesión${group.length > 1 ? 'es' : ''}<br>
+            FC máx media ${avgMax} bpm · ${totalMin} min total
+          </div>
         </div>
-      </div>
-      <div style="text-align:right">
-        <span class="tag ${typeTags[a.type]}">${typeLabels[a.type]}</span>
-        <div class="mono" style="font-size:12px;margin-top:4px;color:var(--z5)">${a.max} bpm máx</div>
-      </div>
-      <button class="btn btn-danger" style="padding:6px 10px;font-size:10px" onclick="event.stopPropagation();deleteActivity(${i})">✕</button>
-    </div>
-  `).join('');
+        <div class="cat-body">
+          ${group.map(a => {
+            const globalIdx = activities.indexOf(a);
+            return `
+            <div class="activity-item ${selectedActivity === a ? 'selected' : ''}" onclick="selectActivity(${globalIdx})">
+              <div class="activity-type">${cat.icon}</div>
+              <div class="activity-info">
+                <div class="activity-name">${a.name}</div>
+                <div class="activity-meta">
+                  ${a.startTime.toLocaleDateString('es-ES', {weekday:'short', day:'numeric', month:'short', year:'numeric'})}
+                  · ${a.duration} min · ${a.hrData.length} pts
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div class="mono" style="font-size:14px;color:var(--z5);font-weight:600">${a.max} bpm</div>
+                <div class="mono" style="font-size:10px;color:var(--text-dim);margin-top:2px">media ${a.avg}</div>
+              </div>
+              <div style="display:flex;flex-direction:column;gap:4px">
+                <button class="btn btn-ghost" style="padding:5px 10px;font-size:10px" onclick="event.stopPropagation();editActivity(${globalIdx})">✏️</button>
+                <button class="btn btn-danger" style="padding:5px 10px;font-size:10px" onclick="event.stopPropagation();deleteActivity(${globalIdx})">✕</button>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  });
+
+  container.innerHTML = html;
 }
 
 function deleteActivity(idx) {
+  const a = activities[idx];
+  if (selectedActivity === a) selectedActivity = null;
   activities.splice(idx, 1);
-  if (selectedActivity === activities[idx]) selectedActivity = null;
   renderActivityList();
   updateComparePanel();
 }
