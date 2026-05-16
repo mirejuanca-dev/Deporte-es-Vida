@@ -580,7 +580,7 @@
   <div class="alert alert-info">
     <span class="alert-icon">ℹ️</span>
     <div class="alert-text">
-      <strong>Formatos soportados:</strong> GPX (Apple Watch, Zepp/Amazfit), TCX (Garmin, Apple Health), CSV (exportaciones manuales).
+      <strong>Formatos soportados:</strong> GPX, TCX, FIT, CSV (Apple Watch, Zepp/Amazfit, Garmin).
       Los datos se procesan localmente en tu navegador — no se envía nada a ningún servidor.
     </div>
   </div>
@@ -589,7 +589,7 @@
     <div class="card-title">Cargar archivos de actividad</div>
 
     <label class="upload-area" id="uploadArea">
-      <input type="file" id="fileInput" multiple accept=".gpx,.tcx,.csv" onchange="handleFiles(this.files)">
+      <input type="file" id="fileInput" multiple accept=".gpx,.tcx,.csv,.fit,application/xml,text/xml,application/vnd.garmin.tcx+xml,application/gpx+xml,text/csv,*/*" onchange="handleFiles(this.files)">
       <div class="upload-icon">🗂️</div>
       <h3>Arrastra o selecciona archivos</h3>
       <p>GPX · TCX · CSV &nbsp;|&nbsp; Múltiples archivos a la vez</p>
