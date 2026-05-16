@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HR Analyzer Pro</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;700&family=Bebas+Neue&family=Inter:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --surface2: #181c24;
+    --border: #1e2430;
+    --accent: #00e5ff;
+    --accent2: #ff4757;
+    --accent3: #ffa502;
+    --accent4: #2ed573;
+    --accent5: #ff6b35;
+    --text: #e8eaf0;
+    --text-dim: #6b7280;
+    --text-mid: #9ca3af;
+
+    /* Zonas FC */
+    --z1: #3b82f6;
+    --z2: #22c55e;
+    --z3: #eab308;
+    --z4: #f97316;
+    --z5: #ef4444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* GRID NOISE BACKGROUND */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,12,16,0.9);
+    backdrop-filter: blur(10px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--accent);
+    text-shadow: 0 0 20px rgba(0,229,255,0.4);
+  }
+
+  .logo span { color: var(--text-dim); font-size: 12px; font-family: 'JetBrains Mono', monospace; display: block; letter-spacing: 2px; margin-top: -4px; }
+
+  .header-right { display: flex; gap: 12px; align-items: center; }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent4);
+    box-shadow: 0 0 8px var(--accent4);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  /* NAV TABS */
+  nav {
+    display: flex;
+    gap: 0;
+    padding: 0 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+
+  .tab {
+    padding: 14px 24px;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+
+  .tab:hover { color: var(--text-mid); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  /* MAIN */
+  main { padding: 28px 32px; max-width: 1400px; margin: 0 auto; }
+
+  /* PANELS */
+  .panel {
+    display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .panel.active { display: block; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 12px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* GRID LAYOUTS */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+  .grid-5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+
+  /* METRIC BOXES */
+  .metric {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    text-align: center;
+  }
+
+  .metric-value {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 42px;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .metric-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+
+  .metric-sub {
+    font-size: 11px;
+    color: var(--text-mid);
+    margin-top: 4px;
+  }
+
+  /* ZONE BARS */
+  .zone-bar-container { margin-bottom: 10px; }
+  .zone-bar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+  .zone-label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 1px; }
+  .zone-pct { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
+  .zone-bar-bg { background: var(--surface2); border-radius: 3px; height: 6px; overflow: hidden; }
+  .zone-bar-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+
+  /* UPLOAD AREA */
+  .upload-area {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 48px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    position: relative;
+  }
+
+  .upload-area:hover, .upload-area.drag-over {
+    border-color: var(--accent);
+    background: rgba(0,229,255,0.04);
+  }
+
+  .upload-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    filter: grayscale(0.5);
+  }
+
+  .upload-area h3 {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 22px;
+    letter-spacing: 3px;
+    color: var(--text-mid);
+    margin-bottom: 8px;
+  }
+
+  .upload-area p { color: var(--text-dim); font-size: 13px; }
+  .upload-area input[type=file] { display: none; }
+
+  /* BUTTONS */
+  .btn {
+    padding: 10px 20px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 700;
+  }
+
+  .btn-primary:hover {
+    background: #00b8cc;
+    box-shadow: 0 0 20px rgba(0,229,255,0.3);
+  }
+
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-mid);
+    border: 1px solid var(--border);
+  }
+
+  .btn-ghost:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .btn-danger {
+    background: transparent;
+    color: var(--accent2);
+    border: 1px solid var(--accent2);
+  }
+
+  /* ACTIVITY LIST */
+  .activity-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 16px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .activity-item:hover { border-color: var(--accent); }
+  .activity-item.selected { border-color: var(--accent); background: rgba(0,229,255,0.06); }
+
+  .activity-type {
+    font-size: 22px;
+    width: 36px;
+    text-align: center;
+  }
+
+  .activity-info { flex: 1; }
+  .activity-name { font-weight: 500; margin-bottom: 2px; }
+  .activity-meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.5px; }
+
+  .activity-badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-weight: 600;
+  }
+
+  /* CHART WRAPPER */
+  .chart-wrapper {
+    position: relative;
+    height: 280px;
+    width: 100%;
+  }
+
+  .chart-wrapper-tall {
+    position: relative;
+    height: 360px;
+    width: 100%;
+  }
+
+  /* STATS TABLE */
+  .stats-table { width: 100%; border-collapse: collapse; }
+  .stats-table th {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    padding: 8px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+  .stats-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(30,36,48,0.5);
+    font-size: 13px;
+  }
+  .stats-table tr:last-child td { border-bottom: none; }
+  .stats-table tr:hover td { background: var(--surface2); }
+
+  .mono { font-family: 'JetBrains Mono', monospace; }
+
+  /* GUIDE STEPS */
+  .guide-step {
+    display: flex;
+    gap: 20px;
+    padding: 20px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .guide-step:last-child { border-bottom: none; }
+
+  .step-num {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 36px;
+    color: var(--accent);
+    opacity: 0.4;
+    min-width: 44px;
+    line-height: 1;
+  }
+
+  .step-content h4 {
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .step-content p {
+    color: var(--text-dim);
+    font-size: 13px;
+    line-height: 1.6;
+    margin-bottom: 8px;
+  }
+
+  .code-tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 2px 8px;
+    color: var(--accent);
+  }
+
+  .device-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+  .device-tab {
+    padding: 8px 18px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    font-size: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text-dim);
+    transition: all 0.2s;
+    background: transparent;
+  }
+  .device-tab.active {
+    background: var(--accent);
+    color: var(--bg);
+    border-color: var(--accent);
+    font-weight: 700;
+  }
+
+  .guide-content { display: none; }
+  .guide-content.active { display: block; }
+
+  /* COMPARISON TABLE */
+  .compare-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .tag {
+    display: inline-block;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    text-transform: uppercase;
+  }
+
+  .tag-mtb { background: rgba(239,68,68,0.2); color: var(--z5); border: 1px solid rgba(239,68,68,0.3); }
+  .tag-hiking { background: rgba(34,197,94,0.2); color: var(--z2); border: 1px solid rgba(34,197,94,0.3); }
+  .tag-wod { background: rgba(249,115,22,0.2); color: var(--z4); border: 1px solid rgba(249,115,22,0.3); }
+  .tag-run { background: rgba(0,229,255,0.2); color: var(--accent); border: 1px solid rgba(0,229,255,0.3); }
+
+  /* ALERT BOX */
+  .alert {
+    padding: 14px 18px;
+    border-radius: 6px;
+    font-size: 13px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 16px;
+  }
+  .alert-info { background: rgba(0,229,255,0.08); border: 1px solid rgba(0,229,255,0.2); color: var(--accent); }
+  .alert-warn { background: rgba(255,165,2,0.08); border: 1px solid rgba(255,165,2,0.2); color: var(--accent3); }
+  .alert-ok { background: rgba(46,213,115,0.08); border: 1px solid rgba(46,213,115,0.2); color: var(--accent4); }
+
+  .alert-icon { font-size: 18px; flex-shrink: 0; }
+  .alert-text { color: var(--text-mid); }
+  .alert-text strong { color: var(--text); }
+
+  /* RECOVERY INDICATOR */
+  .recovery-ring {
+    width: 120px;
+    height: 120px;
+    position: relative;
+    margin: 0 auto 16px;
+  }
+
+  .recovery-ring svg { transform: rotate(-90deg); }
+
+  .recovery-val {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 32px;
+    line-height: 1;
+  }
+
+  .recovery-val small {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+  }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-dim); }
+
+  /* EMPTY STATE */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-dim);
+  }
+  .empty-state .icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-state h3 { font-family: 'Bebas Neue', sans-serif; font-size: 20px; letter-spacing: 3px; color: var(--text-mid); margin-bottom: 8px; }
+
+  /* CHECKBOX */
+  .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-size: 12px;
+    color: var(--text-mid);
+  }
+  .checkbox-label input[type=checkbox] { accent-color: var(--accent); width: 14px; height: 14px; }
+
+  /* PROFILE CONFIG */
+  .config-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .config-label { font-size: 13px; }
+  .config-label small { display: block; color: var(--text-dim); font-size: 11px; margin-top: 2px; }
+
+  input[type=number], input[type=text] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 7px 12px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    width: 100px;
+    text-align: center;
+  }
+
+  input[type=number]:focus, input[type=text]:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  @media (max-width: 900px) {
+    .grid-2, .grid-3, .grid-4, .grid-5 { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+    header { padding: 16px; }
+    nav { padding: 0 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    HR ANALYZER PRO
+    <span>ATHLETIC PERFORMANCE DASHBOARD v1.0</span>
+  </div>
+  <div class="header-right">
+    <span id="activityCount" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim)">0 ACTIVIDADES</span>
+    <div class="status-dot"></div>
+  </div>
+</header>
+
+<!-- NAV -->
+<nav>
+  <div class="tab active" onclick="showTab('import')">📥 Importar</div>
+  <div class="tab" onclick="showTab('analyze')">📊 Análisis</div>
+  <div class="tab" onclick="showTab('compare')">⚖️ Comparar</div>
+  <div class="tab" onclick="showTab('guide')">📖 Guía Exportación</div>
+  <div class="tab" onclick="showTab('profile')">⚙️ Perfil</div>
+</nav>
+
+<main>
+
+<!-- ===== PANEL: IMPORTAR ===== -->
+<div class="panel active" id="panel-import">
+
+  <div class="alert alert-info">
+    <span class="alert-icon">ℹ️</span>
+    <div class="alert-text">
+      <strong>Formatos soportados:</strong> GPX (Apple Watch, Zepp/Amazfit), TCX (Garmin, Apple Health), CSV (exportaciones manuales).
+      Los datos se procesan localmente en tu navegador — no se envía nada a ningún servidor.
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">Cargar archivos de actividad</div>
+
+    <label class="upload-area" id="uploadArea">
+      <input type="file" id="fileInput" multiple accept=".gpx,.tcx,.csv" onchange="handleFiles(this.files)">
+      <div class="upload-icon">🗂️</div>
+      <h3>Arrastra o selecciona archivos</h3>
+      <p>GPX · TCX · CSV &nbsp;|&nbsp; Múltiples archivos a la vez</p>
+      <br>
+      <span class="btn btn-primary" style="display:inline-block;margin-top:8px">Seleccionar archivos</span>
+    </label>
+  </div>
+
+  <div class="card" id="activityListCard">
+    <div class="compare-header">
+      <div class="card-title" style="margin:0">Actividades cargadas</div>
+      <button class="btn btn-ghost" onclick="clearAll()">Limpiar todo</button>
+    </div>
+    <div id="activityList">
+      <div class="empty-state">
+        <div class="icon">📂</div>
+        <h3>Sin actividades</h3>
+        <p>Carga archivos GPX, TCX o CSV para comenzar</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Demo data -->
+  <div class="card">
+    <div class="card-title">Datos de demostración</div>
+    <p style="color:var(--text-dim);font-size:13px;margin-bottom:16px">
+      ¿No tienes archivos a mano? Carga datos de ejemplo para explorar el dashboard.
+    </p>
+    <button class="btn btn-ghost" onclick="loadDemoData()">Cargar 4 actividades de ejemplo</button>
+  </div>
+
+</div>
+
+<!-- ===== PANEL: ANÁLISIS ===== -->
+<div class="panel" id="panel-analyze">
+
+  <div id="analyzeEmpty" class="empty-state">
+    <div class="icon">📊</div>
+    <h3>Sin actividad seleccionada</h3>
+    <p>Ve a <strong>Importar</strong> y haz clic en una actividad para analizarla</p>
+  </div>
+
+  <div id="analyzeContent" style="display:none">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+      <div>
+        <h2 id="analyzeTitle" style="font-family:'Bebas Neue';font-size:28px;letter-spacing:3px"></h2>
+        <div id="analyzeMeta" style="font-family:'JetBrains Mono';font-size:11px;color:var(--text-dim);margin-top:4px"></div>
+      </div>
+      <div id="analyzeTag"></div>
+    </div>
+
+    <!-- KPI ROW -->
+    <div class="grid-5" style="margin-bottom:20px">
+      <div class="metric">
+        <div class="metric-value" id="m-fcmax" style="color:var(--z5)">--</div>
+        <div class="metric-label">FC Máx · bpm</div>
+        <div class="metric-sub" id="m-fcmax-pct"></div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="m-fcmedia" style="color:var(--z3)">--</div>
+        <div class="metric-label">FC Media · bpm</div>
+        <div class="metric-sub" id="m-fcmedia-zone"></div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="m-fcmin" style="color:var(--z1)">--</div>
+        <div class="metric-label">FC Mínima · bpm</div>
+        <div class="metric-sub">Reposo / inicio</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="m-duracion" style="color:var(--accent)">--</div>
+        <div class="metric-label">Duración · min</div>
+        <div class="metric-sub" id="m-puntos"></div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="m-recovery" style="color:var(--accent4)">--</div>
+        <div class="metric-label">Recup. 1min · bpm</div>
+        <div class="metric-sub" id="m-recovery-rating"></div>
+      </div>
+    </div>
+
+    <!-- ALERTS -->
+    <div id="alertsContainer"></div>
+
+    <!-- FC CHART -->
+    <div class="card">
+      <div class="card-title">Frecuencia cardíaca en el tiempo</div>
+      <div class="chart-wrapper-tall">
+        <canvas id="hrChart"></canvas>
+      </div>
+    </div>
+
+    <div class="grid-2">
+
+      <!-- ZONES -->
+      <div class="card">
+        <div class="card-title">Tiempo en zonas cardíacas</div>
+        <div id="zoneProfile" style="margin-bottom:20px"></div>
+
+        <div class="chart-wrapper" style="height:200px">
+          <canvas id="zoneChart"></canvas>
+        </div>
+      </div>
+
+      <!-- DISTRIBUTION -->
+      <div class="card">
+        <div class="card-title">Distribución de FC (histograma)</div>
+        <div class="chart-wrapper">
+          <canvas id="histChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- STATS TABLE -->
+    <div class="card">
+      <div class="card-title">Estadísticas detalladas</div>
+      <table class="stats-table" id="statsTable">
+        <thead>
+          <tr>
+            <th>Parámetro</th>
+            <th>Valor</th>
+            <th>Zona</th>
+            <th>Interpretación</th>
+          </tr>
+        </thead>
+        <tbody id="statsBody"></tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- ===== PANEL: COMPARAR ===== -->
+<div class="panel" id="panel-compare">
+
+  <div id="compareEmpty" class="empty-state">
+    <div class="icon">⚖️</div>
+    <h3>Carga al menos 2 actividades</h3>
+    <p>Ve a <strong>Importar</strong> y carga varias actividades para compararlas</p>
+  </div>
+
+  <div id="compareContent" style="display:none">
+
+    <div class="card">
+      <div class="card-title">Seleccionar actividades a comparar</div>
+      <div id="compareSelector" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px"></div>
+      <button class="btn btn-primary" onclick="runComparison()">Comparar seleccionadas</button>
+    </div>
+
+    <div id="compareResults" style="display:none">
+
+      <!-- RADAR / OVERVIEW -->
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">FC Máx comparada</div>
+          <div class="chart-wrapper">
+            <canvas id="compareMaxChart"></canvas>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Tiempo en zonas — comparativa</div>
+          <div class="chart-wrapper">
+            <canvas id="compareZoneChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Tabla comparativa detallada</div>
+        <div style="overflow-x:auto">
+          <table class="stats-table" id="compareTable">
+            <thead id="compareTableHead"></thead>
+            <tbody id="compareTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">FC en el tiempo — superposición</div>
+        <div class="chart-wrapper-tall">
+          <canvas id="compareLineChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ===== PANEL: GUÍA ===== -->
+<div class="panel" id="panel-guide">
+
+  <div class="alert alert-ok">
+    <span class="alert-icon">✅</span>
+    <div class="alert-text">
+      <strong>Formatos compatibles con esta app:</strong> GPX y TCX (estándar universal). Ambos dispositivos los exportan. El proceso tarda menos de 2 minutos.
+    </div>
+  </div>
+
+  <div class="device-tabs">
+    <button class="device-tab active" onclick="showDevice('apple')">⌚ Apple Watch</button>
+    <button class="device-tab" onclick="showDevice('zepp')">📿 Amazfit / Zepp</button>
+  </div>
+
+  <!-- APPLE WATCH GUIDE -->
+  <div class="guide-content active" id="guide-apple">
+    <div class="card">
+      <div class="card-title">Exportar desde Apple Watch / Apple Health — iOS</div>
+
+      <div class="alert alert-warn">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-text"><strong>Nota:</strong> Apple Health exporta un archivo ZIP con todos tus datos. Dentro encontrarás los workouts en formato XML que deberás convertir a GPX. Te explicamos cómo hacerlo abajo.</div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <h4>Opción A — Usando una app de terceros (más fácil)</h4>
+          <p>Instala <strong>Health Auto Export</strong> o <strong>WorkOutDoors</strong> desde el App Store. Estas apps leen tus datos de Apple Health y exportan directamente en formato GPX o TCX actividad por actividad.</p>
+          <p>En <span class="code-tag">Health Auto Export</span>: abre la app → selecciona la actividad → toca <span class="code-tag">Export</span> → elige <span class="code-tag">GPX</span> → comparte el archivo.</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <h4>Opción B — Exportación nativa de Apple Health</h4>
+          <p>Abre la app <strong>Salud</strong> en tu iPhone → toca tu foto de perfil (arriba a la derecha) → <span class="code-tag">Exportar todos los datos de salud</span> → confirma la exportación.</p>
+          <p>Se genera un archivo <span class="code-tag">export.zip</span>. Descomprímelo. Dentro, en la carpeta <span class="code-tag">workout-routes</span>, encontrarás archivos GPX individuales por actividad si tienes la ruta grabada.</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <h4>Alternativa directa desde la app Actividad / Fitness</h4>
+          <p>En iOS 16+, ve a <strong>Fitness</strong> → selecciona un entrenamiento → desliza hacia abajo → <span class="code-tag">Compartir</span>. Algunas versiones permiten exportar directamente en formato FIT o GPX.</p>
+          <p>Si no aparece la opción, usa la app <strong>Runalyze</strong> directamente desde iPhone — tiene importación directa de Apple Health sin necesidad de exportar archivos.</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-num">04</div>
+        <div class="step-content">
+          <h4>Cargar en esta app</h4>
+          <p>Una vez tengas el archivo <span class="code-tag">.gpx</span> o <span class="code-tag">.tcx</span>, ve al panel <strong>Importar</strong> y arrastra el archivo o úsalo con el selector. La frecuencia cardíaca se extraerá automáticamente.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ZEPP GUIDE -->
+  <div class="guide-content" id="guide-zepp">
+    <div class="card">
+      <div class="card-title">Exportar desde Amazfit / App Zepp</div>
+
+      <div class="alert alert-info">
+        <span class="alert-icon">ℹ️</span>
+        <div class="alert-text"><strong>Buenas noticias:</strong> La app Zepp exporta directamente en formato GPX con datos de FC incluidos. El proceso es sencillo y directo.</div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-num">01</div>
+        <div class="step-content">
+          <h4>Acceder al historial de actividades</h4>
+          <p>Abre la app <strong>Zepp</strong> en tu móvil → toca el icono de <span class="code-tag">Ejercicio</span> (parte inferior) → selecciona <span class="code-tag">Historial</span>.</p>
+          <p>Verás la lista de todas tus actividades ordenadas por fecha.</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-num">02</div>
+        <div class="step-content">
+          <h4>Seleccionar y exportar la actividad</h4>
+          <p>Toca la actividad que quieres exportar → se abre el resumen detallado. Busca el icono de <span class="code-tag">compartir</span> (arriba a la derecha, normalmente tres puntos o una flecha).</p>
+          <p>Selecciona <span class="code-tag">Exportar datos de entrenamiento</span> → elige <span class="code-tag">GPX</span>.</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-num">03</div>
+        <div class="step-content">
+          <h4>Desde la web de Zepp (alternativa en PC)</h4>
+          <p>Entra en <span class="code-tag">user.zepp.com</span> con tu cuenta → <span class="code-tag">Workout</span> → selecciona una actividad → botón <span class="code-tag">Download GPX</span> en la esquina superior derecha del mapa.</p>
+          <p>Esta opción es más cómoda si vas a exportar varias actividades seguidas desde el ordenador.</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-num">04</div>
+        <div class="step-content">
+          <h4>Exportación masiva</h4>
+          <p>La app Zepp no permite exportar múltiples actividades a la vez de forma nativa. Para exportación masiva, puedes conectar tu cuenta Zepp a <span class="code-tag">Strava</span> o <span class="code-tag">Runalyze</span> via sincronización automática, que sí permiten descargas en lote.</p>
+        </div>
+      </div>
+
+      <div class="guide-step">
+        <div class="step-num">05</div>
+        <div class="step-content">
+          <h4>Cargar en esta app</h4>
+          <p>Una vez tengas el archivo <span class="code-tag">.gpx</span>, ve al panel <strong>Importar</strong> y arrastra el archivo. Los datos de FC de tu Amazfit/Zepp se procesarán automáticamente con toda la precisión disponible.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== PANEL: PERFIL ===== -->
+<div class="panel" id="panel-profile">
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">Configuración del deportista</div>
+
+      <div class="config-row">
+        <div class="config-label">
+          Edad
+          <small>Para calcular FCmáx teórica</small>
+        </div>
+        <input type="number" id="cfg-age" value="62" min="20" max="90" onchange="updateProfile()">
+      </div>
+
+      <div class="config-row">
+        <div class="config-label">
+          FC en reposo
+          <small>Medida en ayunas, por la mañana</small>
+        </div>
+        <input type="number" id="cfg-rest" value="52" min="30" max="80" onchange="updateProfile()">
+      </div>
+
+      <div class="config-row">
+        <div class="config-label">
+          FC máxima real
+          <small>Si tienes test de esfuerzo, ponla aquí</small>
+        </div>
+        <input type="number" id="cfg-max" value="172" min="120" max="220" onchange="updateProfile()">
+      </div>
+
+      <div class="config-row" style="border:none">
+        <div class="config-label">
+          Nombre
+          <small>Identificación en gráficas</small>
+        </div>
+        <input type="text" id="cfg-name" value="Deportista" style="width:140px;text-align:left" onchange="updateProfile()">
+      </div>
+
+      <button class="btn btn-primary" onclick="updateProfile()" style="margin-top:16px;width:100%">Guardar perfil</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Zonas cardíacas calculadas</div>
+      <div id="profileZones"></div>
+      <div class="alert alert-info" style="margin-top:16px">
+        <span class="alert-icon">ℹ️</span>
+        <div class="alert-text">Zonas calculadas con el método <strong>Karvonen</strong> (FC de Reserva). Es el más preciso para deportistas con FC en reposo baja, como tú.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="card">
+    <div class="card-title">Tu perfil cardiovascular</div>
+    <div class="grid-4">
+      <div class="metric">
+        <div class="metric-value" id="prof-fcmax" style="color:var(--z5)">172</div>
+        <div class="metric-label">FCmáx Real</div>
+        <div class="metric-sub">Configurada</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="prof-fcteor" style="color:var(--text-dim)">158</div>
+        <div class="metric-label">FCmáx Teórica</div>
+        <div class="metric-sub">Fórmula 220-edad</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="prof-fcres" style="color:var(--accent)">120</div>
+        <div class="metric-label">FC Reserva</div>
+        <div class="metric-sub">FCmáx - FC reposo</div>
+      </div>
+      <div class="metric">
+        <div class="metric-value" id="prof-vo2" style="color:var(--accent4)">--</div>
+        <div class="metric-label">VO₂max Est.</div>
+        <div class="metric-sub">Basado en FCres</div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px">
+      <div class="alert alert-ok">
+        <span class="alert-icon">✅</span>
+        <div class="alert-text">
+          <strong>Tu FCmáx real (172 bpm) supera la teórica (158 bpm) en 14 pulsaciones.</strong>
+          Esto es completamente normal en deportistas veteranos bien entrenados. La fórmula 220-edad tiene un error estándar de ±10-12 bpm y no contempla adaptaciones cardiovasculares de largo plazo.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+</main>
+</div>
+
+<script>
+// ========== STATE ==========
+let activities = [];
+let selectedActivity = null;
+let charts = {};
+let profile = { age: 62, restHR: 52, maxHR: 172, name: 'Deportista' };
+
+// ========== PROFILE & ZONES ==========
+function getZones() {
+  const reserve = profile.maxHR - profile.restHR;
+  return [
+    { name: 'Z1 · Recuperación',   min: profile.restHR,                  max: Math.round(profile.restHR + reserve * 0.50), color: '#3b82f6', pct: '50-60% FCRes' },
+    { name: 'Z2 · Aeróbico base',  min: Math.round(profile.restHR + reserve * 0.50), max: Math.round(profile.restHR + reserve * 0.65), color: '#22c55e', pct: '60-70% FCRes' },
+    { name: 'Z3 · Aeróbico umbral',min: Math.round(profile.restHR + reserve * 0.65), max: Math.round(profile.restHR + reserve * 0.75), color: '#eab308', pct: '70-80% FCRes' },
+    { name: 'Z4 · Anaeróbico',     min: Math.round(profile.restHR + reserve * 0.75), max: Math.round(profile.restHR + reserve * 0.90), color: '#f97316', pct: '80-90% FCRes' },
+    { name: 'Z5 · VO₂max / Pico',  min: Math.round(profile.restHR + reserve * 0.90), max: profile.maxHR + 20,                         color: '#ef4444', pct: '90-100% FCRes' },
+  ];
+}
+
+function getZone(bpm) {
+  const zones = getZones();
+  for (let i = zones.length - 1; i >= 0; i--) {
+    if (bpm >= zones[i].min) return { index: i, zone: zones[i] };
+  }
+  return { index: 0, zone: zones[0] };
+}
+
+function calcZoneTimes(hrData) {
+  const zones = getZones();
+  const times = zones.map(() => 0);
+  hrData.forEach(bpm => {
+    const z = getZone(bpm);
+    times[z.index]++;
+  });
+  return times;
+}
+
+function updateProfile() {
+  profile.age = parseInt(document.getElementById('cfg-age').value) || 62;
+  profile.restHR = parseInt(document.getElementById('cfg-rest').value) || 52;
+  profile.maxHR = parseInt(document.getElementById('cfg-max').value) || 172;
+  profile.name = document.getElementById('cfg-name').value || 'Deportista';
+
+  const theorMax = 220 - profile.age;
+  const reserve = profile.maxHR - profile.restHR;
+  const vo2 = Math.round(15 * (profile.maxHR / profile.restHR));
+
+  document.getElementById('prof-fcmax').textContent = profile.maxHR;
+  document.getElementById('prof-fcteor').textContent = theorMax;
+  document.getElementById('prof-fcres').textContent = reserve;
+  document.getElementById('prof-vo2').textContent = vo2;
+
+  renderProfileZones();
+}
+
+function renderProfileZones() {
+  const zones = getZones();
+  const container = document.getElementById('profileZones');
+  container.innerHTML = zones.map((z, i) => `
+    <div class="zone-bar-container">
+      <div class="zone-bar-header">
+        <span class="zone-label" style="color:${z.color}">${z.name}</span>
+        <span class="zone-pct mono" style="color:${z.color}">${z.min}–${Math.min(z.max, profile.maxHR)} bpm</span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ========== FILE PARSING ==========
+function handleFiles(files) {
+  Array.from(files).forEach(file => parseFile(file));
+}
+
+function parseFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    const content = e.target.result;
+    let activity = null;
+
+    if (file.name.toLowerCase().endsWith('.gpx')) {
+      activity = parseGPX(content, file.name);
+    } else if (file.name.toLowerCase().endsWith('.tcx')) {
+      activity = parseTCX(content, file.name);
+    } else if (file.name.toLowerCase().endsWith('.csv')) {
+      activity = parseCSV(content, file.name);
+    }
+
+    if (activity && activity.hrData.length > 0) {
+      activity.id = Date.now() + Math.random();
+      activities.push(activity);
+      renderActivityList();
+      updateComparePanel();
+    } else {
+      alert(`No se encontraron datos de FC en ${file.name}`);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function parseGPX(content, filename) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(content, 'text/xml');
+  const hrElements = doc.querySelectorAll('hr, heartrate, HeartRateBpm value');
+  const trackPoints = doc.querySelectorAll('trkpt, rtept');
+
+  let hrData = [];
+  let timestamps = [];
+  let name = doc.querySelector('name')?.textContent || filename.replace('.gpx', '');
+
+  if (hrElements.length > 0) {
+    hrElements.forEach(el => {
+      const v = parseInt(el.textContent);
+      if (v > 30 && v < 250) hrData.push(v);
+    });
+  }
+
+  trackPoints.forEach((tp, i) => {
+    const time = tp.querySelector('time')?.textContent;
+    if (time) timestamps.push(new Date(time));
+    // Try Garmin extension HR
+    const extHR = tp.querySelector('hr, heartrate');
+    if (extHR && hrData.length <= i) {
+      const v = parseInt(extHR.textContent);
+      if (v > 30 && v < 250) hrData.push(v);
+    }
+  });
+
+  // Fallback: look for gpxtpx:hr
+  if (hrData.length === 0) {
+    const nsHR = doc.querySelectorAll('*');
+    nsHR.forEach(el => {
+      if (el.localName === 'hr') {
+        const v = parseInt(el.textContent);
+        if (v > 30 && v < 250) hrData.push(v);
+      }
+    });
+  }
+
+  const startTime = timestamps[0] || new Date();
+  const duration = timestamps.length > 1
+    ? Math.round((timestamps[timestamps.length-1] - timestamps[0]) / 60000)
+    : Math.round(hrData.length / 2);
+
+  return buildActivity(name, hrData, startTime, duration, detectType(name));
+}
+
+function parseTCX(content, filename) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(content, 'text/xml');
+
+  let hrData = [];
+  let timestamps = [];
+  let name = doc.querySelector('Activity Id')?.textContent || filename.replace('.tcx', '');
+
+  doc.querySelectorAll('Trackpoint').forEach(tp => {
+    const hrEl = tp.querySelector('HeartRateBpm Value');
+    const timeEl = tp.querySelector('Time');
+    if (hrEl) {
+      const v = parseInt(hrEl.textContent);
+      if (v > 30 && v < 250) hrData.push(v);
+    }
+    if (timeEl) timestamps.push(new Date(timeEl.textContent));
+  });
+
+  const actName = doc.querySelector('Activity')?.getAttribute('Sport') || name;
+  const startTime = timestamps[0] || new Date();
+  const duration = timestamps.length > 1
+    ? Math.round((timestamps[timestamps.length-1] - timestamps[0]) / 60000)
+    : Math.round(hrData.length / 2);
+
+  return buildActivity(actName, hrData, startTime, duration, detectType(actName));
+}
+
+function parseCSV(content, filename) {
+  const lines = content.trim().split('\n');
+  let hrData = [];
+  let name = filename.replace('.csv', '');
+
+  const hrCol = lines[0].toLowerCase().split(/[,;]/).findIndex(h =>
+    h.includes('hr') || h.includes('heart') || h.includes('fc') || h.includes('bpm')
+  );
+
+  lines.slice(1).forEach(line => {
+    const cols = line.split(/[,;]/);
+    const col = hrCol >= 0 ? hrCol : 0;
+    const v = parseInt(cols[col]);
+    if (v > 30 && v < 250) hrData.push(v);
+  });
+
+  return buildActivity(name, hrData, new Date(), hrData.length, detectType(name));
+}
+
+function buildActivity(name, hrData, startTime, duration, type) {
+  if (hrData.length === 0) return null;
+  const sorted = [...hrData].sort((a,b) => a-b);
+  const max = Math.max(...hrData);
+  const min = Math.min(...hrData);
+  const avg = Math.round(hrData.reduce((a,b)=>a+b,0)/hrData.length);
+
+  // Recovery: last 60s vs peak
+  const peakIdx = hrData.indexOf(max);
+  const recoveryEnd = Math.min(peakIdx + Math.round(hrData.length * 0.1) + 1, hrData.length - 1);
+  const recovery = max - hrData[recoveryEnd];
+
+  const zoneTimes = calcZoneTimes(hrData);
+
+  return {
+    name, hrData, startTime, duration, type,
+    max, min, avg, recovery,
+    zoneTimes,
+    p95: sorted[Math.floor(sorted.length * 0.95)],
+    p50: sorted[Math.floor(sorted.length * 0.50)],
+  };
+}
+
+function detectType(name) {
+  const n = name.toLowerCase();
+  if (n.includes('bike') || n.includes('mtb') || n.includes('cicl') || n.includes('cycling')) return 'mtb';
+  if (n.includes('hike') || n.includes('walk') || n.includes('caminata') || n.includes('trail') || n.includes('montaña')) return 'hiking';
+  if (n.includes('wod') || n.includes('crossfit') || n.includes('hiit') || n.includes('funcional')) return 'wod';
+  if (n.includes('run') || n.includes('corre')) return 'run';
+  return 'other';
+}
+
+// ========== DEMO DATA ==========
+function loadDemoData() {
+  const baseDate = new Date('2024-03-15T09:00:00');
+
+  const mtbHR = generateDemoHR(55, 95, 175, 158, 75, 120);
+  const hikingHR = generateDemoHR(58, 80, 155, 138, 90, 180);
+  const wodHR = generateDemoHR(60, 110, 178, 165, 45, 60);
+  const mtb2HR = generateDemoHR(52, 90, 168, 150, 60, 100);
+
+  const demos = [
+    { name: 'MTB — Collserola Norte', hrData: mtbHR, type: 'mtb', duration: 120, date: new Date('2024-03-10T09:00:00') },
+    { name: 'Hiking — Serra de Montseny', hrData: hikingHR, type: 'hiking', duration: 180, date: new Date('2024-03-12T08:00:00') },
+    { name: 'WOD — CrossFit intenso', hrData: wodHR, type: 'wod', duration: 45, date: new Date('2024-03-14T18:30:00') },
+    { name: 'MTB — Ruta suave Valle', hrData: mtb2HR, type: 'mtb', duration: 100, date: new Date('2024-03-16T10:00:00') },
+  ];
+
+  demos.forEach(d => {
+    const sorted = [...d.hrData].sort((a,b)=>a-b);
+    const max = Math.max(...d.hrData);
+    const min = Math.min(...d.hrData);
+    const peakIdx = d.hrData.indexOf(max);
+    const recoveryEnd = Math.min(peakIdx + Math.round(d.hrData.length * 0.08) + 1, d.hrData.length - 1);
+
+    activities.push({
+      id: Date.now() + Math.random(),
+      name: d.name,
+      hrData: d.hrData,
+      startTime: d.date,
+      duration: d.duration,
+      type: d.type,
+      max,
+      min,
+      avg: Math.round(d.hrData.reduce((a,b)=>a+b,0)/d.hrData.length),
+      recovery: max - d.hrData[recoveryEnd],
+      zoneTimes: calcZoneTimes(d.hrData),
+      p95: sorted[Math.floor(sorted.length * 0.95)],
+      p50: sorted[Math.floor(sorted.length * 0.50)],
+    });
+  });
+
+  renderActivityList();
+  updateComparePanel();
+}
+
+function generateDemoHR(warmStart, warmEnd, peak, cruising, sustainedMinutes, totalPoints) {
+  const data = [];
+  const warmPoints = Math.round(totalPoints * 0.15);
+  const rampPoints = Math.round(totalPoints * 0.10);
+  const peakPoints = Math.round(totalPoints * 0.05);
+  const sustainPoints = Math.round(totalPoints * 0.40);
+  const coolPoints = totalPoints - warmPoints - rampPoints - peakPoints - sustainPoints;
+
+  for (let i = 0; i < warmPoints; i++) data.push(warmStart + Math.round((warmEnd - warmStart) * i / warmPoints) + rand(-3,3));
+  for (let i = 0; i < rampPoints; i++) data.push(warmEnd + Math.round((peak - warmEnd) * i / rampPoints) + rand(-4,4));
+  for (let i = 0; i < peakPoints; i++) data.push(peak + rand(-3,5));
+  for (let i = 0; i < sustainPoints; i++) {
+    const wave = Math.sin(i * 0.15) * 8;
+    data.push(Math.round(cruising + wave) + rand(-5,5));
+  }
+  for (let i = 0; i < coolPoints; i++) {
+    const dropTo = warmStart + 10;
+    data.push(cruising - Math.round((cruising - dropTo) * i / coolPoints) + rand(-4,4));
+  }
+  return data.map(v => Math.max(45, Math.min(profile.maxHR + 5, v)));
+}
+
+function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+// ========== RENDER ACTIVITY LIST ==========
+function renderActivityList() {
+  const container = document.getElementById('activityList');
+  document.getElementById('activityCount').textContent = `${activities.length} ACTIVIDAD${activities.length !== 1 ? 'ES' : ''}`;
+
+  if (activities.length === 0) {
+    container.innerHTML = `<div class="empty-state"><div class="icon">📂</div><h3>Sin actividades</h3><p>Carga archivos GPX, TCX o CSV</p></div>`;
+    return;
+  }
+
+  const typeIcons = { mtb: '🚵', hiking: '🥾', wod: '🏋️', run: '🏃', other: '❤️' };
+  const typeTags = { mtb: 'tag-mtb', hiking: 'tag-hiking', wod: 'tag-wod', run: 'tag-run', other: '' };
+  const typeLabels = { mtb: 'MTB', hiking: 'HIKING', wod: 'WOD', run: 'RUN', other: 'OTROS' };
+
+  container.innerHTML = activities.map((a, i) => `
+    <div class="activity-item ${selectedActivity === a ? 'selected' : ''}" onclick="selectActivity(${i})">
+      <div class="activity-type">${typeIcons[a.type] || '❤️'}</div>
+      <div class="activity-info">
+        <div class="activity-name">${a.name}</div>
+        <div class="activity-meta">
+          ${a.startTime.toLocaleDateString('es-ES')} · ${a.duration} min · ${a.hrData.length} puntos FC
+        </div>
+      </div>
+      <div style="text-align:right">
+        <span class="tag ${typeTags[a.type]}">${typeLabels[a.type]}</span>
+        <div class="mono" style="font-size:12px;margin-top:4px;color:var(--z5)">${a.max} bpm máx</div>
+      </div>
+      <button class="btn btn-danger" style="padding:6px 10px;font-size:10px" onclick="event.stopPropagation();deleteActivity(${i})">✕</button>
+    </div>
+  `).join('');
+}
+
+function deleteActivity(idx) {
+  activities.splice(idx, 1);
+  if (selectedActivity === activities[idx]) selectedActivity = null;
+  renderActivityList();
+  updateComparePanel();
+}
+
+function clearAll() {
+  activities = [];
+  selectedActivity = null;
+  renderActivityList();
+  updateComparePanel();
+  document.getElementById('analyzeContent').style.display = 'none';
+  document.getElementById('analyzeEmpty').style.display = 'block';
+}
+
+// ========== ANALYZE ==========
+function selectActivity(idx) {
+  selectedActivity = activities[idx];
+  renderActivityList();
+  renderAnalysis(selectedActivity);
+  showTab('analyze');
+}
+
+function renderAnalysis(a) {
+  document.getElementById('analyzeEmpty').style.display = 'none';
+  document.getElementById('analyzeContent').style.display = 'block';
+
+  const typeLabels = { mtb: 'MOUNTAIN BIKE', hiking: 'HIKING / TRAIL', wod: 'WOD / CROSSFIT', run: 'RUNNING', other: 'ACTIVIDAD' };
+  const typeTags = { mtb: 'tag-mtb', hiking: 'tag-hiking', wod: 'tag-wod', run: 'tag-run', other: '' };
+
+  document.getElementById('analyzeTitle').textContent = a.name;
+  document.getElementById('analyzeMeta').textContent =
+    `${a.startTime.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'})}  ·  ${a.duration} minutos  ·  ${a.hrData.length} registros de FC`;
+  document.getElementById('analyzeTag').innerHTML = `<span class="tag ${typeTags[a.type]}">${typeLabels[a.type] || a.type.toUpperCase()}</span>`;
+
+  // KPIs
+  const theorMax = 220 - profile.age;
+  const pctMax = Math.round((a.max / profile.maxHR) * 100);
+  const avgZone = getZone(a.avg);
+
+  document.getElementById('m-fcmax').textContent = a.max;
+  document.getElementById('m-fcmax').style.color = a.max > profile.maxHR ? '#ff4757' : '#ef4444';
+  document.getElementById('m-fcmax-pct').textContent = `${pctMax}% de tu FCmáx`;
+
+  document.getElementById('m-fcmedia').textContent = a.avg;
+  document.getElementById('m-fcmedia').style.color = avgZone.zone.color;
+  document.getElementById('m-fcmedia-zone').textContent = `Zona ${avgZone.index + 1}`;
+
+  document.getElementById('m-fcmin').textContent = a.min;
+  document.getElementById('m-duracion').textContent = a.duration;
+  document.getElementById('m-puntos').textContent = `${a.hrData.length} puntos`;
+
+  document.getElementById('m-recovery').textContent = a.recovery > 0 ? a.recovery : '---';
+  const recRating = a.recovery >= 30 ? '🟢 Excelente' : a.recovery >= 20 ? '🟡 Buena' : '🔴 Lenta';
+  document.getElementById('m-recovery-rating').textContent = recRating;
+
+  // Alerts
+  renderAlerts(a, pctMax);
+
+  // Charts
+  renderHRChart(a);
+  renderZoneChart(a);
+  renderHistChart(a);
+  renderStatsTable(a, pctMax);
+}
+
+function renderAlerts(a, pctMax) {
+  const container = document.getElementById('alertsContainer');
+  const alerts = [];
+
+  if (a.max > profile.maxHR) {
+    alerts.push({ type: 'warn', icon: '⚡', text: `<strong>FC pico (${a.max} bpm) supera tu FCmáx configurada (${profile.maxHR} bpm).</strong> Considera actualizar tu FCmáx real en el perfil, o confirmar con prueba de esfuerzo.` });
+  }
+
+  if (pctMax >= 95) {
+    alerts.push({ type: 'warn', icon: '🔥', text: `<strong>Esfuerzo máximo detectado (${pctMax}% FCmáx).</strong> Sesión de alta intensidad. Asegura recuperación adecuada de 48h.` });
+  } else if (pctMax >= 85) {
+    alerts.push({ type: 'info', icon: '💪', text: `<strong>Esfuerzo alto (${pctMax}% FCmáx).</strong> Zona anaeróbica/VO₂max. Sesión de desarrollo de forma física.` });
+  } else {
+    alerts.push({ type: 'ok', icon: '✅', text: `<strong>Intensidad controlada (${pctMax}% FCmáx).</strong> Sesión aeróbica dentro de parámetros normales.` });
+  }
+
+  if (a.recovery >= 30) {
+    alerts.push({ type: 'ok', icon: '❤️', text: `<strong>Recuperación excelente: ${a.recovery} bpm en 1 minuto.</strong> Indicador de alta condición cardiovascular. (Referencia: ≥30 bpm = excelente).` });
+  }
+
+  container.innerHTML = alerts.map(al => `
+    <div class="alert alert-${al.type}">
+      <span class="alert-icon">${al.icon}</span>
+      <div class="alert-text">${al.text}</div>
+    </div>
+  `).join('');
+}
+
+function renderHRChart(a) {
+  destroyChart('hrChart');
+  const ctx = document.getElementById('hrChart').getContext('2d');
+  const zones = getZones();
+  const step = Math.max(1, Math.floor(a.hrData.length / 300));
+  const data = a.hrData.filter((_, i) => i % step === 0);
+  const labels = data.map((_, i) => {
+    const minutes = Math.round(i * step * a.duration / a.hrData.length);
+    return `${minutes}min`;
+  });
+
+  // Color each point by zone
+  const pointColors = data.map(bpm => getZone(bpm).zone.color);
+
+  charts['hrChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'FC (bpm)',
+        data,
+        borderColor: '#00e5ff',
+        backgroundColor: 'rgba(0,229,255,0.08)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        fill: true,
+        tension: 0.3,
+      }, {
+        label: `FCmáx (${profile.maxHR})`,
+        data: Array(data.length).fill(profile.maxHR),
+        borderColor: 'rgba(239,68,68,0.4)',
+        borderWidth: 1,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        fill: false,
+      }, {
+        label: `FC media (${a.avg})`,
+        data: Array(data.length).fill(a.avg),
+        borderColor: 'rgba(234,179,8,0.4)',
+        borderWidth: 1,
+        borderDash: [3, 3],
+        pointRadius: 0,
+        fill: false,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 10 }, boxWidth: 20 } },
+        tooltip: {
+          backgroundColor: '#111318',
+          borderColor: '#1e2430',
+          borderWidth: 1,
+          titleColor: '#9ca3af',
+          bodyColor: '#e8eaf0',
+          callbacks: {
+            label: ctx => {
+              const bpm = ctx.raw;
+              const z = getZone(bpm);
+              return ` ${bpm} bpm — ${z.zone.name}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 12 }, grid: { color: '#1e2430' } },
+        y: {
+          min: Math.max(40, a.min - 10),
+          max: Math.max(a.max + 10, profile.maxHR + 10),
+          ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } },
+          grid: { color: '#1e2430' }
+        }
+      }
+    }
+  });
+}
+
+function renderZoneChart(a) {
+  destroyChart('zoneChart');
+  const zones = getZones();
+  const total = a.zoneTimes.reduce((s,v) => s+v, 0) || 1;
+  const pcts = a.zoneTimes.map(t => Math.round(t / total * 100));
+
+  // Zone bars
+  const container = document.getElementById('zoneProfile');
+  container.innerHTML = zones.map((z, i) => `
+    <div class="zone-bar-container">
+      <div class="zone-bar-header">
+        <span class="zone-label" style="color:${z.color}">${z.name}</span>
+        <span class="zone-pct" style="color:${z.color}">${pcts[i]}% &nbsp;<span style="color:var(--text-dim);font-weight:300">${Math.round(a.zoneTimes[i] * a.duration / total)} min</span></span>
+      </div>
+      <div class="zone-bar-bg">
+        <div class="zone-bar-fill" style="width:${pcts[i]}%;background:${z.color}"></div>
+      </div>
+    </div>
+  `).join('');
+
+  const ctx = document.getElementById('zoneChart').getContext('2d');
+  charts['zoneChart'] = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: zones.map(z => z.name),
+      datasets: [{ data: pcts, backgroundColor: zones.map(z => z.color), borderWidth: 2, borderColor: '#111318' }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'right', labels: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 9 }, boxWidth: 12, padding: 8 } },
+        tooltip: {
+          backgroundColor: '#111318', borderColor: '#1e2430', borderWidth: 1,
+          callbacks: { label: ctx => ` ${ctx.label}: ${ctx.raw}%` }
+        }
+      }
+    }
+  });
+}
+
+function renderHistChart(a) {
+  destroyChart('histChart');
+  const ctx = document.getElementById('histChart').getContext('2d');
+  const buckets = {};
+  const step = 5;
+
+  a.hrData.forEach(bpm => {
+    const bucket = Math.floor(bpm / step) * step;
+    buckets[bucket] = (buckets[bucket] || 0) + 1;
+  });
+
+  const keys = Object.keys(buckets).map(Number).sort((a,b)=>a-b);
+  const vals = keys.map(k => buckets[k]);
+  const colors = keys.map(k => getZone(k).zone.color);
+
+  charts['histChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: keys.map(k => `${k}`),
+      datasets: [{ label: 'Frecuencia', data: vals, backgroundColor: colors.map(c => c + 'aa'), borderColor: colors, borderWidth: 1 }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: '#111318', borderColor: '#1e2430', borderWidth: 1, callbacks: { label: ctx => ` ${ctx.raw} lecturas` } }
+      },
+      scales: {
+        x: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 15 }, grid: { color: '#1e2430' }, title: { display: true, text: 'bpm', color: '#6b7280', font: { size: 10 } } },
+        y: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } }
+      }
+    }
+  });
+}
+
+function renderStatsTable(a, pctMax) {
+  const zones = getZones();
+  const total = a.zoneTimes.reduce((s,v)=>s+v,0) || 1;
+  const topZone = a.zoneTimes.indexOf(Math.max(...a.zoneTimes));
+  const recRating = a.recovery >= 30 ? '🟢 Excelente' : a.recovery >= 20 ? '🟡 Buena' : a.recovery < 0 ? '⚪ No medible' : '🔴 Lenta';
+
+  const rows = [
+    ['FC Máxima', `${a.max} bpm`, `${pctMax}% FCmáx`, pctMax > 95 ? '⚡ Esfuerzo máximo' : pctMax > 85 ? '💪 Alta intensidad' : '✅ Controlado'],
+    ['FC Media', `${a.avg} bpm`, zones[getZone(a.avg).index].name, `Zona predominante de trabajo`],
+    ['FC Mínima', `${a.min} bpm`, 'Reposo/inicio', 'FC basal de la sesión'],
+    ['Percentil 95', `${a.p95} bpm`, `${Math.round(a.p95/profile.maxHR*100)}% FCmáx`, 'FC sostenida alta (excluye picos breves)'],
+    ['Percentil 50', `${a.p50} bpm`, zones[getZone(a.p50).index].name, 'FC mediana real de la actividad'],
+    ['Recuperación 1min', `${a.recovery > 0 ? a.recovery + ' bpm' : 'N/D'}`, recRating, a.recovery >= 30 ? 'Condición cardiovascular excelente' : 'Indicador de fitness aeróbico'],
+    ['Zona principal', zones[topZone].name, `${Math.round(a.zoneTimes[topZone]/total*100)}% del tiempo`, 'Tipo de esfuerzo predominante'],
+    ['Duración', `${a.duration} min`, `${a.hrData.length} lecturas`, `Resolución: 1 lectura / ${Math.round(a.duration*60/a.hrData.length)}s`],
+    ['FCmáx teórica', `${220-profile.age} bpm`, `vs real ${profile.maxHR} bpm`, `Diferencia: +${profile.maxHR-(220-profile.age)} bpm (normal en deportistas)`],
+  ];
+
+  document.getElementById('statsBody').innerHTML = rows.map(([param, val, zone, interp]) => `
+    <tr>
+      <td class="mono" style="color:var(--text-dim);font-size:11px">${param}</td>
+      <td class="mono" style="font-weight:600;color:var(--text)">${val}</td>
+      <td style="color:var(--text-mid);font-size:12px">${zone}</td>
+      <td style="color:var(--text-dim);font-size:12px">${interp}</td>
+    </tr>
+  `).join('');
+}
+
+// ========== COMPARE ==========
+function updateComparePanel() {
+  const empty = document.getElementById('compareEmpty');
+  const content = document.getElementById('compareContent');
+
+  if (activities.length < 2) {
+    empty.style.display = 'block';
+    content.style.display = 'none';
+  } else {
+    empty.style.display = 'none';
+    content.style.display = 'block';
+    renderCompareSelector();
+  }
+}
+
+function renderCompareSelector() {
+  const container = document.getElementById('compareSelector');
+  const typeIcons = { mtb: '🚵', hiking: '🥾', wod: '🏋️', run: '🏃', other: '❤️' };
+
+  container.innerHTML = activities.map((a, i) => `
+    <label class="checkbox-label" style="background:var(--surface2);padding:8px 12px;border-radius:6px;border:1px solid var(--border)">
+      <input type="checkbox" class="compare-cb" value="${i}" checked>
+      ${typeIcons[a.type]} ${a.name} — <span class="mono" style="color:var(--z5)">${a.max} bpm</span>
+    </label>
+  `).join('');
+}
+
+function runComparison() {
+  const selected = Array.from(document.querySelectorAll('.compare-cb:checked')).map(cb => activities[parseInt(cb.value)]);
+  if (selected.length < 2) { alert('Selecciona al menos 2 actividades'); return; }
+
+  document.getElementById('compareResults').style.display = 'block';
+
+  renderCompareMaxChart(selected);
+  renderCompareZoneChart(selected);
+  renderCompareTable(selected);
+  renderCompareLineChart(selected);
+}
+
+const COMPARE_COLORS = ['#00e5ff', '#ff4757', '#2ed573', '#ffa502', '#ff6b35', '#a29bfe'];
+
+function renderCompareMaxChart(selected) {
+  destroyChart('compareMaxChart');
+  const ctx = document.getElementById('compareMaxChart').getContext('2d');
+  const shortName = a => a.name.length > 20 ? a.name.substring(0,20)+'…' : a.name;
+
+  charts['compareMaxChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: selected.map(shortName),
+      datasets: [
+        { label: 'FC Máx', data: selected.map(a => a.max), backgroundColor: selected.map((_,i) => COMPARE_COLORS[i%COMPARE_COLORS.length]+'cc'), borderColor: selected.map((_,i) => COMPARE_COLORS[i%COMPARE_COLORS.length]), borderWidth: 1 },
+        { label: 'FC Media', data: selected.map(a => a.avg), backgroundColor: selected.map((_,i) => COMPARE_COLORS[i%COMPARE_COLORS.length]+'44'), borderColor: selected.map((_,i) => COMPARE_COLORS[i%COMPARE_COLORS.length]), borderWidth: 1 },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 10 } } } },
+      scales: {
+        x: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } },
+        y: { min: 50, ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } }
+      }
+    }
+  });
+}
+
+function renderCompareZoneChart(selected) {
+  destroyChart('compareZoneChart');
+  const ctx = document.getElementById('compareZoneChart').getContext('2d');
+  const zones = getZones();
+  const shortName = a => a.name.length > 20 ? a.name.substring(0,20)+'…' : a.name;
+
+  charts['compareZoneChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: selected.map(shortName),
+      datasets: zones.map((z, zi) => ({
+        label: `Z${zi+1}`,
+        data: selected.map(a => {
+          const total = a.zoneTimes.reduce((s,v)=>s+v,0) || 1;
+          return Math.round(a.zoneTimes[zi] / total * 100);
+        }),
+        backgroundColor: z.color + 'bb',
+        borderColor: z.color,
+        borderWidth: 1,
+      }))
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 9 }, boxWidth: 12 } } },
+      scales: {
+        x: { stacked: true, ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } },
+        y: { stacked: true, ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } }
+      }
+    }
+  });
+}
+
+function renderCompareTable(selected) {
+  const zones = getZones();
+
+  document.getElementById('compareTableHead').innerHTML = `
+    <tr>
+      <th>Parámetro</th>
+      ${selected.map((a,i) => `<th style="color:${COMPARE_COLORS[i%COMPARE_COLORS.length]}">${a.name.substring(0,18)}</th>`).join('')}
+    </tr>`;
+
+  const rows = [
+    ['FC Máxima', a => `${a.max} bpm`],
+    ['FC Media', a => `${a.avg} bpm`],
+    ['FC Mínima', a => `${a.min} bpm`],
+    ['% FCmáx alcanzado', a => `${Math.round(a.max/profile.maxHR*100)}%`],
+    ['Recuperación 1min', a => a.recovery > 0 ? `${a.recovery} bpm` : 'N/D'],
+    ['Zona predominante', a => { const t=a.zoneTimes; return `Z${t.indexOf(Math.max(...t))+1}`; }],
+    ['Tiempo Z4+Z5', a => { const tot=a.zoneTimes.reduce((s,v)=>s+v,0)||1; return `${Math.round((a.zoneTimes[3]+a.zoneTimes[4])/tot*100)}%`; }],
+    ['Duración', a => `${a.duration} min`],
+  ];
+
+  document.getElementById('compareTableBody').innerHTML = rows.map(([label, fn]) => `
+    <tr>
+      <td class="mono" style="color:var(--text-dim);font-size:11px">${label}</td>
+      ${selected.map(a => `<td class="mono" style="font-weight:500">${fn(a)}</td>`).join('')}
+    </tr>
+  `).join('');
+}
+
+function renderCompareLineChart(selected) {
+  destroyChart('compareLineChart');
+  const ctx = document.getElementById('compareLineChart').getContext('2d');
+
+  const datasets = selected.map((a, i) => {
+    const step = Math.max(1, Math.floor(a.hrData.length / 200));
+    const data = a.hrData.filter((_,j) => j % step === 0);
+    const pct = data.map((_, j) => Math.round(j * 100 / data.length));
+
+    return {
+      label: a.name.substring(0, 22),
+      data: data,
+      borderColor: COMPARE_COLORS[i % COMPARE_COLORS.length],
+      backgroundColor: 'transparent',
+      borderWidth: 1.5,
+      pointRadius: 0,
+      tension: 0.3,
+    };
+  });
+
+  // Normalize to % of activity
+  const maxLen = Math.max(...selected.map(a => Math.ceil(a.hrData.length / Math.max(1, Math.floor(a.hrData.length / 200)))));
+  const labels = Array.from({length: maxLen}, (_, i) => `${Math.round(i * 100 / maxLen)}%`);
+
+  charts['compareLineChart'] = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 10 }, boxWidth: 16 } } },
+      scales: {
+        x: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 10 }, grid: { color: '#1e2430' }, title: { display: true, text: '% duración actividad', color: '#6b7280', font: { size: 10 } } },
+        y: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' }, title: { display: true, text: 'bpm', color: '#6b7280', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// ========== UI HELPERS ==========
+function showTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+
+  const tabs = ['import','analyze','compare','guide','profile'];
+  document.querySelectorAll('.tab')[tabs.indexOf(tab)]?.classList.add('active');
+  document.getElementById(`panel-${tab}`)?.classList.add('active');
+}
+
+function showDevice(device) {
+  document.querySelectorAll('.device-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.guide-content').forEach(g => g.classList.remove('active'));
+  event.target.classList.add('active');
+  document.getElementById(`guide-${device}`).classList.add('active');
+}
+
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// DRAG & DROP
+const uploadArea = document.getElementById('uploadArea');
+uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.classList.add('drag-over'); });
+uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('drag-over'));
+uploadArea.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadArea.classList.remove('drag-over');
+  handleFiles(e.dataTransfer.files);
+});
+
+// INIT
+updateProfile();
+renderProfileZones();
+</script>
+</body>
+</html>
