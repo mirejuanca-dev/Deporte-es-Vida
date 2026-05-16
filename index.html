@@ -615,6 +615,36 @@
   .type-btn.selected { border-color: var(--accent); background: rgba(0,229,255,0.1); color: var(--accent); }
   .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
 
+  /* ANALYSIS MODULES */
+  .module-btn {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    cursor: pointer;
+    transition: all 0.2s;
+    text-align: left;
+  }
+  .module-btn:hover { border-color: var(--text-dim); }
+  .module-btn.active { border-color: var(--accent); background: rgba(0,229,255,0.08); }
+  .module-btn .mod-icon { font-size: 22px; }
+  .module-btn .mod-name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .module-btn .mod-desc { font-size: 10px; color: var(--text-dim); line-height: 1.4; }
+  .module-btn.active .mod-name { color: var(--accent); }
+  .module-btn .mod-check {
+    position: absolute;
+    top: 10px; right: 10px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+  .module-btn { position: relative; }
+
   /* PROFILE CONFIG */
   .config-row {
     display: flex;
@@ -931,31 +961,105 @@
     <!-- CATEGORY BROWSERS -->
     <div id="compareBrowser"></div>
 
+    <!-- ANALYSIS MODULE SELECTOR -->
+    <div id="compareModuleSelector" style="display:none">
+      <div class="card">
+        <div class="card-title">Selecciona los análisis que quieres ver</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:16px" id="moduleGrid"></div>
+        <button class="btn btn-primary" onclick="renderSelectedModules()" style="width:100%">Generar análisis seleccionados</button>
+      </div>
+    </div>
+
     <!-- RESULTS -->
     <div id="compareResults" style="display:none">
-      <div class="grid-2">
+
+      <!-- M1: FC Overview -->
+      <div class="compare-module" id="mod-overview" style="display:none">
         <div class="card">
-          <div class="card-title">FC Máx comparada</div>
+          <div class="card-title">📊 Resumen FC — Máx, Media y Mínima</div>
           <div class="chart-wrapper"><canvas id="compareMaxChart"></canvas></div>
         </div>
+      </div>
+
+      <!-- M2: Zonas -->
+      <div class="compare-module" id="mod-zones" style="display:none">
         <div class="card">
-          <div class="card-title">Tiempo en zonas — comparativa</div>
+          <div class="card-title">🎯 Tiempo en zonas cardíacas</div>
           <div class="chart-wrapper"><canvas id="compareZoneChart"></canvas></div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">Tabla comparativa detallada</div>
-        <div style="overflow-x:auto">
-          <table class="stats-table" id="compareTable">
-            <thead id="compareTableHead"></thead>
-            <tbody id="compareTableBody"></tbody>
-          </table>
+
+      <!-- M3: Curvas FC -->
+      <div class="compare-module" id="mod-curves" style="display:none">
+        <div class="card">
+          <div class="card-title">📈 Curvas FC superpuestas en el tiempo</div>
+          <div class="chart-wrapper-tall"><canvas id="compareLineChart"></canvas></div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-title">FC en el tiempo — superposición</div>
-        <div class="chart-wrapper-tall"><canvas id="compareLineChart"></canvas></div>
+
+      <!-- M4: TRIMP / Carga -->
+      <div class="compare-module" id="mod-trimp" style="display:none">
+        <div class="card">
+          <div class="card-title">⚡ Carga de entrenamiento — TRIMP</div>
+          <div class="alert alert-info" style="margin-bottom:16px">
+            <span class="alert-icon">ℹ️</span>
+            <div class="alert-text">El <strong>TRIMP (Training Impulse)</strong> pondera la duración por la intensidad de FC. Una sesión larga en Z2 puede tener menos carga que una corta en Z5. Base: fórmula Bannister con FC de reserva.</div>
+          </div>
+          <div class="chart-wrapper" style="height:220px"><canvas id="compareTrimpChart"></canvas></div>
+          <div id="compareTrimpTable" style="margin-top:16px"></div>
+        </div>
       </div>
+
+      <!-- M5: Índice esfuerzo relativo -->
+      <div class="compare-module" id="mod-effort" style="display:none">
+        <div class="card">
+          <div class="card-title">💪 Índice de esfuerzo relativo por zona</div>
+          <div class="alert alert-info" style="margin-bottom:16px">
+            <span class="alert-icon">ℹ️</span>
+            <div class="alert-text">Pondera el tiempo en cada zona por su factor de intensidad (Z1=1, Z2=2, Z3=3, Z4=4, Z5=5). Muestra cuánto esfuerzo real representó cada sesión independientemente de su duración.</div>
+          </div>
+          <div class="chart-wrapper" style="height:220px"><canvas id="compareEffortChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- M6: Progresión temporal -->
+      <div class="compare-module" id="mod-progression" style="display:none">
+        <div class="card">
+          <div class="card-title">📅 Progresión temporal — FC media y máx</div>
+          <div class="alert alert-ok" style="margin-bottom:16px">
+            <span class="alert-icon">✅</span>
+            <div class="alert-text"><strong>FC media bajando con el tiempo = mejora aeróbica.</strong> Mismo esfuerzo percibido, menor coste cardíaco. Ordenado cronológicamente.</div>
+          </div>
+          <div class="chart-wrapper-tall"><canvas id="compareProgressChart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- M7: Recuperación comparada -->
+      <div class="compare-module" id="mod-recovery" style="display:none">
+        <div class="card">
+          <div class="card-title">❤️ Recuperación cardíaca comparada</div>
+          <div class="alert alert-info" style="margin-bottom:16px">
+            <span class="alert-icon">ℹ️</span>
+            <div class="alert-text">Caída de FC en el primer minuto tras el pico. <strong>≥30 bpm = excelente · 20-29 = buena · &lt;20 = mejorable.</strong> Indicador directo de condición cardiovascular.</div>
+          </div>
+          <div class="chart-wrapper" style="height:220px"><canvas id="compareRecoveryChart"></canvas></div>
+          <div id="compareRecoveryDetail" style="margin-top:16px"></div>
+        </div>
+      </div>
+
+      <!-- M8: Tabla completa -->
+      <div class="compare-module" id="mod-table" style="display:none">
+        <div class="card">
+          <div class="card-title">📋 Tabla comparativa completa</div>
+          <div style="overflow-x:auto">
+            <table class="stats-table">
+              <thead id="compareTableHead"></thead>
+              <tbody id="compareTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
 
   </div>
@@ -2113,11 +2217,11 @@ function updateComparePanel() {
 function renderCompareBrowser() {
   const container = document.getElementById('compareBrowser');
   const CATS = [
-    { type: 'mtb',    icon: '🚵', label: 'Mountain Bike',  color: 'var(--z5)' },
-    { type: 'hiking', icon: '🥾', label: 'Hiking / Trail', color: 'var(--z2)' },
-    { type: 'wod',    icon: '🏋️', label: 'WOD / CrossFit', color: 'var(--z4)' },
-    { type: 'run',    icon: '🏃', label: 'Running',        color: 'var(--accent)' },
-    { type: 'other',  icon: '❤️', label: 'Otras',          color: 'var(--text-dim)' },
+    { type: 'mtb',    icon: '🚵', label: 'Mountain Bike',  color: '#ef4444' },
+    { type: 'hiking', icon: '🥾', label: 'Hiking / Trail', color: '#22c55e' },
+    { type: 'wod',    icon: '🏋️', label: 'WOD / CrossFit', color: '#f97316' },
+    { type: 'run',    icon: '🏃', label: 'Running',        color: '#00e5ff' },
+    { type: 'other',  icon: '❤️', label: 'Otras',          color: '#6b7280' },
   ];
 
   let html = '';
@@ -2132,27 +2236,33 @@ function renderCompareBrowser() {
         <div class="card-title" style="margin-bottom:12px">
           <span style="font-size:16px">${cat.icon}</span>
           <span style="color:${cat.color};font-size:13px;letter-spacing:2px">${cat.label.toUpperCase()}</span>
-          <span style="color:var(--text-dim);font-size:10px;margin-left:auto">${group.length} sesión${group.length>1?'es':''} — toca para añadir a la comparación</span>
+          <span style="color:var(--text-dim);font-size:10px;margin-left:auto">Toca para seleccionar</span>
         </div>
         <div style="display:flex;flex-direction:column;gap:6px">
           ${group.map(a => {
-            const inTray = compareTray.includes(a.id);
+            const aid = String(a.id);
+            const inTray = compareTray.includes(aid);
+            const borderCol = inTray ? cat.color : '#1e2430';
+            const bgCol = inTray ? 'rgba(0,229,255,0.06)' : '#181c24';
+            const nameCol = inTray ? '#00e5ff' : '#e8eaf0';
+            const checkContent = inTray ? `<span style="color:#00e5ff;font-size:14px;font-weight:700">✓</span>` : '';
+            const checkBorder = inTray ? '#00e5ff' : '#1e2430';
+            const checkBg = inTray ? 'rgba(0,229,255,0.15)' : 'transparent';
             return `
-            <div class="activity-item" style="cursor:pointer;border-color:${inTray ? cat.color.replace('var(--','').replace(')','') === 'z5' ? '#ef4444' : 'var('+cat.color.slice(4) : 'var(--border)'};background:${inTray ? 'rgba(0,229,255,0.06)' : 'var(--surface2)'}"
-              onclick="toggleCompareTray('${a.id}')">
-              <div style="width:28px;height:28px;border-radius:50%;border:2px solid ${inTray ? '#00e5ff' : 'var(--border)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;background:${inTray ? '#00e5ff22' : 'transparent'}">
-                ${inTray ? '<span style="color:#00e5ff;font-size:14px">✓</span>' : ''}
+            <div onclick="toggleCompareTray('${aid}')"
+              style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:6px;border:1px solid ${borderCol};background:${bgCol};cursor:pointer;transition:all 0.15s">
+              <div style="width:26px;height:26px;border-radius:50%;border:2px solid ${checkBorder};display:flex;align-items:center;justify-content:center;flex-shrink:0;background:${checkBg}">
+                ${checkContent}
               </div>
-              <div class="activity-info">
-                <div class="activity-name" style="${inTray ? 'color:var(--accent)' : ''}">${a.name}</div>
-                <div class="activity-meta">
-                  ${a.startTime.toLocaleDateString('es-ES', {weekday:'short', day:'numeric', month:'short', year:'numeric'})}
-                  · ${a.duration} min
+              <div style="flex:1;min-width:0">
+                <div style="font-size:13px;font-weight:500;color:${nameCol};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${a.name}</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b7280;margin-top:2px">
+                  ${a.startTime.toLocaleDateString('es-ES', {weekday:'short', day:'numeric', month:'short', year:'numeric'})} · ${a.duration} min
                 </div>
               </div>
-              <div style="text-align:right">
-                <div class="mono" style="font-size:13px;color:var(--z5);font-weight:600">${a.max} bpm</div>
-                <div class="mono" style="font-size:10px;color:var(--text-dim)">media ${a.avg}</div>
+              <div style="text-align:right;flex-shrink:0">
+                <div style="font-family:'JetBrains Mono',monospace;font-size:13px;color:#ef4444;font-weight:600">${a.max} bpm</div>
+                <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#6b7280">media ${a.avg}</div>
               </div>
             </div>`;
           }).join('')}
@@ -2163,11 +2273,13 @@ function renderCompareBrowser() {
 }
 
 function toggleCompareTray(id) {
-  const idx = compareTray.indexOf(id);
+  // Always work with strings to avoid type mismatch
+  const sid = String(id);
+  const idx = compareTray.indexOf(sid);
   if (idx >= 0) {
     compareTray.splice(idx, 1);
   } else {
-    compareTray.push(id);
+    compareTray.push(sid);
   }
   renderCompareBrowser();
   renderCompareTray();
@@ -2176,7 +2288,10 @@ function toggleCompareTray(id) {
 function renderCompareTray() {
   const tray = document.getElementById('compareTray');
   const btn = document.getElementById('btnRunCompare');
-  const selected = compareTray.map(id => activities.find(a => a.id === id)).filter(Boolean);
+  // Match by string id
+  const selected = compareTray
+    .map(sid => activities.find(a => String(a.id) === sid))
+    .filter(Boolean);
 
   if (selected.length === 0) {
     tray.innerHTML = '<span style="color:var(--text-dim);font-size:12px;align-self:center;padding:0 4px">Selecciona actividades de las carpetas de abajo ↓</span>';
@@ -2187,11 +2302,11 @@ function renderCompareTray() {
 
   const COLORS = ['#00e5ff','#ff4757','#2ed573','#ffa502','#ff6b35','#a29bfe'];
   tray.innerHTML = selected.map((a, i) => `
-    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid ${COLORS[i%COLORS.length]};border-radius:20px;font-size:12px">
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 12px;background:var(--surface);border:1px solid ${COLORS[i%COLORS.length]};border-radius:20px;font-size:12px">
       <span style="width:8px;height:8px;border-radius:50%;background:${COLORS[i%COLORS.length]};flex-shrink:0"></span>
       <span style="color:var(--text)">${a.name.length > 22 ? a.name.substring(0,22)+'…' : a.name}</span>
-      <span class="mono" style="color:var(--z5);font-size:11px">${a.max}bpm</span>
-      <span style="cursor:pointer;color:var(--text-dim);font-size:14px;line-height:1" onclick="toggleCompareTray('${a.id}')">×</span>
+      <span style="font-family:'JetBrains Mono',monospace;color:#ef4444;font-size:11px">${a.max}bpm</span>
+      <span onclick="toggleCompareTray('${String(a.id)}')" style="cursor:pointer;color:var(--text-dim);font-size:16px;line-height:1;margin-left:2px">×</span>
     </div>
   `).join('');
 
@@ -2206,138 +2321,334 @@ function clearCompareTray() {
   document.getElementById('compareResults').style.display = 'none';
 }
 
-function runComparison() {
-  const selected = compareTray.map(id => activities.find(a => a.id === id)).filter(Boolean);
-  if (selected.length < 2) { alert('Selecciona al menos 2 actividades'); return; }
+// ========== MODULE DEFINITIONS ==========
+const MODULES = [
+  { id: 'overview',    icon: '📊', name: 'Resumen FC',           desc: 'Máx, media y mínima por sesión' },
+  { id: 'zones',       icon: '🎯', name: 'Tiempo en zonas',      desc: 'Distribución Z1–Z5 apilada' },
+  { id: 'curves',      icon: '📈', name: 'Curvas FC',            desc: 'Superposición de frecuencia cardíaca' },
+  { id: 'trimp',       icon: '⚡', name: 'Carga TRIMP',          desc: 'Carga real ponderada por intensidad' },
+  { id: 'effort',      icon: '💪', name: 'Esfuerzo relativo',    desc: 'Índice de intensidad por zona' },
+  { id: 'progression', icon: '📅', name: 'Progresión temporal',  desc: 'Evolución FC media y máx en el tiempo' },
+  { id: 'recovery',    icon: '❤️', name: 'Recuperación',         desc: 'Caída de FC al minuto del pico' },
+  { id: 'table',       icon: '📋', name: 'Tabla completa',       desc: 'Todas las métricas lado a lado' },
+];
 
-  document.getElementById('compareResults').style.display = 'block';
-  document.getElementById('compareResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+let activeModules = new Set(['overview', 'zones', 'table']); // default selection
 
-  renderCompareMaxChart(selected);
-  renderCompareZoneChart(selected);
-  renderCompareTable(selected);
-  renderCompareLineChart(selected);
+function renderModuleGrid() {
+  document.getElementById('moduleGrid').innerHTML = MODULES.map(m => `
+    <div class="module-btn ${activeModules.has(m.id) ? 'active' : ''}" onclick="toggleModule('${m.id}')">
+      <div class="mod-check" style="${activeModules.has(m.id) ? 'border-color:#00e5ff;background:#00e5ff;color:#000' : ''}">
+        ${activeModules.has(m.id) ? '✓' : ''}
+      </div>
+      <span class="mod-icon">${m.icon}</span>
+      <span class="mod-name">${m.name}</span>
+      <span class="mod-desc">${m.desc}</span>
+    </div>
+  `).join('');
 }
 
-const COMPARE_COLORS = ['#00e5ff', '#ff4757', '#2ed573', '#ffa502', '#ff6b35', '#a29bfe'];
+function toggleModule(id) {
+  if (activeModules.has(id)) { activeModules.delete(id); } else { activeModules.add(id); }
+  renderModuleGrid();
+}
 
-function renderCompareMaxChart(selected) {
+function runComparison() {
+  const selected = compareTray
+    .map(sid => activities.find(a => String(a.id) === sid))
+    .filter(Boolean);
+  if (selected.length < 2) { alert('Selecciona al menos 2 actividades'); return; }
+
+  document.getElementById('compareModuleSelector').style.display = 'block';
+  renderModuleGrid();
+  document.getElementById('compareResults').style.display = 'none';
+  document.getElementById('compareModuleSelector').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderSelectedModules() {
+  const selected = compareTray
+    .map(sid => activities.find(a => String(a.id) === sid))
+    .filter(Boolean);
+  if (selected.length < 2) return;
+
+  // Show/hide modules
+  document.querySelectorAll('.compare-module').forEach(el => el.style.display = 'none');
+  activeModules.forEach(id => {
+    const el = document.getElementById(`mod-${id}`);
+    if (el) el.style.display = 'block';
+  });
+
+  document.getElementById('compareResults').style.display = 'block';
+
+  // Destroy old charts
+  ['compareMaxChart','compareZoneChart','compareLineChart','compareTrimpChart',
+   'compareEffortChart','compareProgressChart','compareRecoveryChart'].forEach(destroyChart);
+
+  if (activeModules.has('overview'))    renderModOverview(selected);
+  if (activeModules.has('zones'))       renderModZones(selected);
+  if (activeModules.has('curves'))      renderModCurves(selected);
+  if (activeModules.has('trimp'))       renderModTrimp(selected);
+  if (activeModules.has('effort'))      renderModEffort(selected);
+  if (activeModules.has('progression')) renderModProgression(selected);
+  if (activeModules.has('recovery'))    renderModRecovery(selected);
+  if (activeModules.has('table'))       renderModTable(selected);
+
+  document.getElementById('compareResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const CC = ['#00e5ff','#ff4757','#2ed573','#ffa502','#ff6b35','#a29bfe'];
+const shortName = a => a.name.length > 22 ? a.name.substring(0,22)+'…' : a.name;
+
+const CHART_DEFAULTS = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { labels: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 10 }, boxWidth: 14 } } },
+  scales: {
+    x: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } },
+    y: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } },
+  }
+};
+
+// ---- M1: Overview ----
+function renderModOverview(sel) {
   destroyChart('compareMaxChart');
   const ctx = document.getElementById('compareMaxChart').getContext('2d');
-  const shortName = a => a.name.length > 20 ? a.name.substring(0,20)+'…' : a.name;
-
   charts['compareMaxChart'] = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: selected.map(shortName),
+      labels: sel.map(shortName),
       datasets: [
-        { label: 'FC Máx', data: selected.map(a => a.max), backgroundColor: selected.map((_,i) => COMPARE_COLORS[i%COMPARE_COLORS.length]+'cc'), borderColor: selected.map((_,i) => COMPARE_COLORS[i%COMPARE_COLORS.length]), borderWidth: 1 },
-        { label: 'FC Media', data: selected.map(a => a.avg), backgroundColor: selected.map((_,i) => COMPARE_COLORS[i%COMPARE_COLORS.length]+'44'), borderColor: selected.map((_,i) => COMPARE_COLORS[i%COMPARE_COLORS.length]), borderWidth: 1 },
+        { label: 'FC Máx', data: sel.map(a => a.max), backgroundColor: sel.map((_,i) => CC[i%CC.length]+'cc'), borderColor: sel.map((_,i) => CC[i%CC.length]), borderWidth: 1.5 },
+        { label: 'FC Media', data: sel.map(a => a.avg), backgroundColor: sel.map((_,i) => CC[i%CC.length]+'55'), borderColor: sel.map((_,i) => CC[i%CC.length]), borderWidth: 1 },
+        { label: 'FC Mínima', data: sel.map(a => a.min), backgroundColor: sel.map((_,i) => CC[i%CC.length]+'22'), borderColor: sel.map((_,i) => CC[i%CC.length]), borderWidth: 1, borderDash: [4,4] },
       ]
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 10 } } } },
-      scales: {
-        x: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } },
-        y: { min: 50, ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } }
-      }
-    }
+    options: { ...CHART_DEFAULTS, scales: { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, min: 40, title: { display: true, text: 'bpm', color: '#6b7280', font: { size: 10 } } } } }
   });
 }
 
-function renderCompareZoneChart(selected) {
+// ---- M2: Zonas ----
+function renderModZones(sel) {
   destroyChart('compareZoneChart');
   const ctx = document.getElementById('compareZoneChart').getContext('2d');
   const zones = getZones();
-  const shortName = a => a.name.length > 20 ? a.name.substring(0,20)+'…' : a.name;
-
   charts['compareZoneChart'] = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: selected.map(shortName),
+      labels: sel.map(shortName),
       datasets: zones.map((z, zi) => ({
         label: `Z${zi+1}`,
-        data: selected.map(a => {
-          const total = a.zoneTimes.reduce((s,v)=>s+v,0) || 1;
-          return Math.round(a.zoneTimes[zi] / total * 100);
-        }),
-        backgroundColor: z.color + 'bb',
-        borderColor: z.color,
-        borderWidth: 1,
+        data: sel.map(a => { const t = a.zoneTimes.reduce((s,v)=>s+v,0)||1; return Math.round(a.zoneTimes[zi]/t*100); }),
+        backgroundColor: z.color+'bb', borderColor: z.color, borderWidth: 1,
       }))
     },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 9 }, boxWidth: 12 } } },
+    options: { ...CHART_DEFAULTS,
+      plugins: { ...CHART_DEFAULTS.plugins },
       scales: {
-        x: { stacked: true, ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } },
-        y: { stacked: true, ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' } }
+        x: { ...CHART_DEFAULTS.scales.x, stacked: true },
+        y: { ...CHART_DEFAULTS.scales.y, stacked: true, title: { display: true, text: '% tiempo', color: '#6b7280', font: { size: 10 } } }
       }
     }
   });
 }
 
-function renderCompareTable(selected) {
+// ---- M3: Curvas ----
+function renderModCurves(sel) {
+  destroyChart('compareLineChart');
+  const ctx = document.getElementById('compareLineChart').getContext('2d');
+  const datasets = sel.map((a, i) => {
+    const step = Math.max(1, Math.floor(a.hrData.length / 250));
+    return {
+      label: shortName(a),
+      data: a.hrData.filter((_,j) => j % step === 0),
+      borderColor: CC[i%CC.length], backgroundColor: 'transparent',
+      borderWidth: 1.5, pointRadius: 0, tension: 0.3,
+    };
+  });
+  const maxLen = Math.max(...sel.map(a => Math.ceil(a.hrData.length / Math.max(1, Math.floor(a.hrData.length/250)))));
+  charts['compareLineChart'] = new Chart(ctx, {
+    type: 'line',
+    data: { labels: Array.from({length: maxLen}, (_,i) => `${Math.round(i*100/maxLen)}%`), datasets },
+    options: { ...CHART_DEFAULTS,
+      scales: {
+        x: { ...CHART_DEFAULTS.scales.x, title: { display: true, text: '% duración actividad', color: '#6b7280', font: { size: 10 } }, maxTicksLimit: 10 },
+        y: { ...CHART_DEFAULTS.scales.y, title: { display: true, text: 'bpm', color: '#6b7280', font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+// ---- M4: TRIMP ----
+function calcTRIMP(a) {
+  // Bannister TRIMP: sum of each datapoint * (HR_ratio) * e^(b * HR_ratio)
+  // b = 1.92 for men
+  const b = 1.92;
+  const reserve = profile.maxHR - profile.restHR;
+  let trimp = 0;
+  const dt = a.duration / a.hrData.length; // minutes per point
+  a.hrData.forEach(hr => {
+    const ratio = (hr - profile.restHR) / reserve;
+    if (ratio > 0) trimp += dt * ratio * Math.exp(b * ratio);
+  });
+  return Math.round(trimp);
+}
+
+function renderModTrimp(sel) {
+  destroyChart('compareTrimpChart');
+  const ctx = document.getElementById('compareTrimpChart').getContext('2d');
+  const trimps = sel.map(calcTRIMP);
+
+  charts['compareTrimpChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sel.map(shortName),
+      datasets: [{ label: 'TRIMP', data: trimps, backgroundColor: sel.map((_,i) => CC[i%CC.length]+'cc'), borderColor: sel.map((_,i) => CC[i%CC.length]), borderWidth: 1.5 }]
+    },
+    options: { ...CHART_DEFAULTS,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } },
+      scales: { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, title: { display: true, text: 'TRIMP (u.a.)', color: '#6b7280', font: { size: 10 } } } }
+    }
+  });
+
+  // Table
+  const maxT = Math.max(...trimps);
+  document.getElementById('compareTrimpTable').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+      ${sel.map((a, i) => {
+        const t = trimps[i];
+        const pct = Math.round(t/maxT*100);
+        const rating = t > 150 ? '🔴 Alta carga' : t > 80 ? '🟡 Moderada' : '🟢 Baja carga';
+        return `<div style="background:var(--surface2);border:1px solid ${CC[i%CC.length]}44;border-radius:6px;padding:12px">
+          <div style="font-size:10px;color:${CC[i%CC.length]};font-family:'JetBrains Mono',monospace;margin-bottom:4px">${shortName(a)}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:${CC[i%CC.length]}">${t}</div>
+          <div style="font-size:10px;color:var(--text-dim);margin-bottom:6px">TRIMP · ${rating}</div>
+          <div style="background:var(--border);border-radius:3px;height:4px"><div style="width:${pct}%;height:100%;background:${CC[i%CC.length]};border-radius:3px"></div></div>
+        </div>`;
+      }).join('')}
+    </div>`;
+}
+
+// ---- M5: Esfuerzo relativo ----
+function calcEffortIndex(a) {
+  const weights = [1, 2, 3, 4, 5];
+  const total = a.zoneTimes.reduce((s,v)=>s+v, 0) || 1;
+  return Math.round(a.zoneTimes.reduce((sum, t, i) => sum + (t/total)*weights[i]*100, 0));
+}
+
+function renderModEffort(sel) {
+  destroyChart('compareEffortChart');
+  const ctx = document.getElementById('compareEffortChart').getContext('2d');
+  const efforts = sel.map(calcEffortIndex);
+
+  charts['compareEffortChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sel.map(shortName),
+      datasets: [{ label: 'Índice de esfuerzo', data: efforts, backgroundColor: sel.map((_,i) => CC[i%CC.length]+'cc'), borderColor: sel.map((_,i) => CC[i%CC.length]), borderWidth: 1.5 }]
+    },
+    options: { ...CHART_DEFAULTS,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false } },
+      scales: { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, title: { display: true, text: 'Índice (0-500)', color: '#6b7280', font: { size: 10 } } } }
+    }
+  });
+}
+
+// ---- M6: Progresión temporal ----
+function renderModProgression(sel) {
+  destroyChart('compareProgressChart');
+  const ctx = document.getElementById('compareProgressChart').getContext('2d');
+  const sorted = [...sel].sort((a,b) => a.startTime - b.startTime);
+
+  charts['compareProgressChart'] = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: sorted.map(a => a.startTime.toLocaleDateString('es-ES', {day:'numeric', month:'short'})),
+      datasets: [
+        { label: 'FC Media', data: sorted.map(a => a.avg), borderColor: '#00e5ff', backgroundColor: 'rgba(0,229,255,0.08)', borderWidth: 2, pointRadius: 5, pointBackgroundColor: '#00e5ff', tension: 0.3, fill: true },
+        { label: 'FC Máx', data: sorted.map(a => a.max), borderColor: '#ef4444', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 4, pointBackgroundColor: '#ef4444', borderDash: [4,4], tension: 0.3 },
+        { label: 'FC Mín', data: sorted.map(a => a.min), borderColor: '#3b82f6', backgroundColor: 'transparent', borderWidth: 1, pointRadius: 3, pointBackgroundColor: '#3b82f6', borderDash: [2,4], tension: 0.3 },
+      ]
+    },
+    options: { ...CHART_DEFAULTS,
+      scales: { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, title: { display: true, text: 'bpm', color: '#6b7280', font: { size: 10 } } } }
+    }
+  });
+}
+
+// ---- M7: Recuperación ----
+function renderModRecovery(sel) {
+  destroyChart('compareRecoveryChart');
+  const ctx = document.getElementById('compareRecoveryChart').getContext('2d');
+
+  charts['compareRecoveryChart'] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: sel.map(shortName),
+      datasets: [{
+        label: 'Recuperación 1min (bpm)',
+        data: sel.map(a => Math.max(0, a.recovery)),
+        backgroundColor: sel.map(a => a.recovery >= 30 ? '#2ed57388' : a.recovery >= 20 ? '#eab30888' : '#ef444488'),
+        borderColor: sel.map(a => a.recovery >= 30 ? '#2ed573' : a.recovery >= 20 ? '#eab308' : '#ef4444'),
+        borderWidth: 1.5,
+      }]
+    },
+    options: { ...CHART_DEFAULTS,
+      plugins: { ...CHART_DEFAULTS.plugins, legend: { display: false },
+        annotation: { annotations: [{
+          type: 'line', yMin: 30, yMax: 30,
+          borderColor: '#2ed573', borderWidth: 1, borderDash: [4,4],
+          label: { content: 'Excelente ≥30', display: true, color: '#2ed573', font: { size: 9 } }
+        }]}
+      },
+      scales: { ...CHART_DEFAULTS.scales, y: { ...CHART_DEFAULTS.scales.y, title: { display: true, text: 'bpm caída en 1min', color: '#6b7280', font: { size: 10 } } } }
+    }
+  });
+
+  const ratingLabel = v => v >= 30 ? '🟢 Excelente' : v >= 20 ? '🟡 Buena' : v > 0 ? '🔴 Mejorable' : '⚪ N/D';
+  document.getElementById('compareRecoveryDetail').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
+      ${sel.map((a,i) => `
+        <div style="background:var(--surface2);border:1px solid ${CC[i%CC.length]}44;border-radius:6px;padding:12px">
+          <div style="font-size:10px;color:${CC[i%CC.length]};font-family:'JetBrains Mono',monospace;margin-bottom:4px">${shortName(a)}</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:36px;color:${a.recovery>=30?'#2ed573':a.recovery>=20?'#eab308':'#ef4444'}">${Math.max(0,a.recovery)}</div>
+          <div style="font-size:10px;color:var(--text-dim)">bpm · ${ratingLabel(a.recovery)}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ---- M8: Tabla completa ----
+function renderModTable(sel) {
   document.getElementById('compareTableHead').innerHTML = `
     <tr>
       <th>Parámetro</th>
-      ${selected.map((a,i) => `<th style="color:${COMPARE_COLORS[i%COMPARE_COLORS.length]}">${a.name.substring(0,18)}</th>`).join('')}
+      ${sel.map((a,i) => `<th style="color:${CC[i%CC.length]}">${a.name.substring(0,16)}</th>`).join('')}
     </tr>`;
 
+  const zones = getZones();
   const rows = [
+    ['Fecha', a => a.startTime.toLocaleDateString('es-ES')],
+    ['Tipo', a => ({mtb:'🚵 MTB', hiking:'🥾 Hiking', wod:'🏋️ WOD', run:'🏃 Running', other:'❤️ Otra'})[a.type]],
+    ['Duración', a => `${a.duration} min`],
     ['FC Máxima', a => `${a.max} bpm`],
     ['FC Media', a => `${a.avg} bpm`],
     ['FC Mínima', a => `${a.min} bpm`],
-    ['% FCmáx alcanzado', a => `${Math.round(a.max/profile.maxHR*100)}%`],
+    ['% FCmáx', a => `${Math.round(a.max/profile.maxHR*100)}%`],
+    ['Percentil 95', a => `${a.p95} bpm`],
     ['Recuperación 1min', a => a.recovery > 0 ? `${a.recovery} bpm` : 'N/D'],
+    ['TRIMP', a => calcTRIMP(a)],
+    ['Índice esfuerzo', a => calcEffortIndex(a)],
     ['Zona predominante', a => { const t=a.zoneTimes; return `Z${t.indexOf(Math.max(...t))+1}`; }],
-    ['Tiempo Z4+Z5', a => { const tot=a.zoneTimes.reduce((s,v)=>s+v,0)||1; return `${Math.round((a.zoneTimes[3]+a.zoneTimes[4])/tot*100)}%`; }],
-    ['Duración', a => `${a.duration} min`],
-    ['Fecha', a => a.startTime.toLocaleDateString('es-ES')],
+    ['Tiempo Z1', a => { const t=a.zoneTimes.reduce((s,v)=>s+v,0)||1; return `${Math.round(a.zoneTimes[0]/t*100)}%`; }],
+    ['Tiempo Z2', a => { const t=a.zoneTimes.reduce((s,v)=>s+v,0)||1; return `${Math.round(a.zoneTimes[1]/t*100)}%`; }],
+    ['Tiempo Z3', a => { const t=a.zoneTimes.reduce((s,v)=>s+v,0)||1; return `${Math.round(a.zoneTimes[2]/t*100)}%`; }],
+    ['Tiempo Z4+Z5', a => { const t=a.zoneTimes.reduce((s,v)=>s+v,0)||1; return `${Math.round((a.zoneTimes[3]+a.zoneTimes[4])/t*100)}%`; }],
   ];
 
   document.getElementById('compareTableBody').innerHTML = rows.map(([label, fn]) => `
     <tr>
       <td class="mono" style="color:var(--text-dim);font-size:11px">${label}</td>
-      ${selected.map(a => `<td class="mono" style="font-weight:500">${fn(a)}</td>`).join('')}
+      ${sel.map(a => `<td class="mono" style="font-weight:500">${fn(a)}</td>`).join('')}
     </tr>
   `).join('');
-}
-
-function renderCompareLineChart(selected) {
-  destroyChart('compareLineChart');
-  const ctx = document.getElementById('compareLineChart').getContext('2d');
-
-  const datasets = selected.map((a, i) => {
-    const step = Math.max(1, Math.floor(a.hrData.length / 200));
-    const data = a.hrData.filter((_,j) => j % step === 0);
-    return {
-      label: a.name.substring(0, 22),
-      data,
-      borderColor: COMPARE_COLORS[i % COMPARE_COLORS.length],
-      backgroundColor: 'transparent',
-      borderWidth: 1.5,
-      pointRadius: 0,
-      tension: 0.3,
-    };
-  });
-
-  const maxLen = Math.max(...selected.map(a => Math.ceil(a.hrData.length / Math.max(1, Math.floor(a.hrData.length / 200)))));
-  const labels = Array.from({length: maxLen}, (_, i) => `${Math.round(i * 100 / maxLen)}%`);
-
-  charts['compareLineChart'] = new Chart(ctx, {
-    type: 'line',
-    data: { labels, datasets },
-    options: {
-      responsive: true, maintainAspectRatio: false,
-      plugins: { legend: { labels: { color: '#9ca3af', font: { family: 'JetBrains Mono', size: 10 }, boxWidth: 16 } } },
-      scales: {
-        x: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 10 }, grid: { color: '#1e2430' }, title: { display: true, text: '% duración actividad', color: '#6b7280', font: { size: 10 } } },
-        y: { ticks: { color: '#6b7280', font: { family: 'JetBrains Mono', size: 9 } }, grid: { color: '#1e2430' }, title: { display: true, text: 'bpm', color: '#6b7280', font: { size: 10 } } }
-      }
-    }
-  });
 }
 
 // ========== UI HELPERS ==========
