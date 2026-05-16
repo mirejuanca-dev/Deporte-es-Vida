@@ -2093,6 +2093,8 @@ function renderStatsTable(a, pctMax) {
 }
 
 // ========== COMPARE ==========
+let compareTray = []; // array of activity ids selected for comparison
+
 function updateComparePanel() {
   const empty = document.getElementById('compareEmpty');
   const content = document.getElementById('compareContent');
@@ -2103,27 +2105,113 @@ function updateComparePanel() {
   } else {
     empty.style.display = 'none';
     content.style.display = 'block';
-    renderCompareSelector();
+    renderCompareBrowser();
+    renderCompareTray();
   }
 }
 
-function renderCompareSelector() {
-  const container = document.getElementById('compareSelector');
-  const typeIcons = { mtb: '🚵', hiking: '🥾', wod: '🏋️', run: '🏃', other: '❤️' };
+function renderCompareBrowser() {
+  const container = document.getElementById('compareBrowser');
+  const CATS = [
+    { type: 'mtb',    icon: '🚵', label: 'Mountain Bike',  color: 'var(--z5)' },
+    { type: 'hiking', icon: '🥾', label: 'Hiking / Trail', color: 'var(--z2)' },
+    { type: 'wod',    icon: '🏋️', label: 'WOD / CrossFit', color: 'var(--z4)' },
+    { type: 'run',    icon: '🏃', label: 'Running',        color: 'var(--accent)' },
+    { type: 'other',  icon: '❤️', label: 'Otras',          color: 'var(--text-dim)' },
+  ];
 
-  container.innerHTML = activities.map((a, i) => `
-    <label class="checkbox-label" style="background:var(--surface2);padding:8px 12px;border-radius:6px;border:1px solid var(--border)">
-      <input type="checkbox" class="compare-cb" value="${i}" checked>
-      ${typeIcons[a.type]} ${a.name} — <span class="mono" style="color:var(--z5)">${a.max} bpm</span>
-    </label>
+  let html = '';
+  CATS.forEach(cat => {
+    const group = activities
+      .filter(a => a.type === cat.type)
+      .sort((a, b) => b.startTime - a.startTime);
+    if (group.length === 0) return;
+
+    html += `
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title" style="margin-bottom:12px">
+          <span style="font-size:16px">${cat.icon}</span>
+          <span style="color:${cat.color};font-size:13px;letter-spacing:2px">${cat.label.toUpperCase()}</span>
+          <span style="color:var(--text-dim);font-size:10px;margin-left:auto">${group.length} sesión${group.length>1?'es':''} — toca para añadir a la comparación</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          ${group.map(a => {
+            const inTray = compareTray.includes(a.id);
+            return `
+            <div class="activity-item" style="cursor:pointer;border-color:${inTray ? cat.color.replace('var(--','').replace(')','') === 'z5' ? '#ef4444' : 'var('+cat.color.slice(4) : 'var(--border)'};background:${inTray ? 'rgba(0,229,255,0.06)' : 'var(--surface2)'}"
+              onclick="toggleCompareTray('${a.id}')">
+              <div style="width:28px;height:28px;border-radius:50%;border:2px solid ${inTray ? '#00e5ff' : 'var(--border)'};display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;background:${inTray ? '#00e5ff22' : 'transparent'}">
+                ${inTray ? '<span style="color:#00e5ff;font-size:14px">✓</span>' : ''}
+              </div>
+              <div class="activity-info">
+                <div class="activity-name" style="${inTray ? 'color:var(--accent)' : ''}">${a.name}</div>
+                <div class="activity-meta">
+                  ${a.startTime.toLocaleDateString('es-ES', {weekday:'short', day:'numeric', month:'short', year:'numeric'})}
+                  · ${a.duration} min
+                </div>
+              </div>
+              <div style="text-align:right">
+                <div class="mono" style="font-size:13px;color:var(--z5);font-weight:600">${a.max} bpm</div>
+                <div class="mono" style="font-size:10px;color:var(--text-dim)">media ${a.avg}</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function toggleCompareTray(id) {
+  const idx = compareTray.indexOf(id);
+  if (idx >= 0) {
+    compareTray.splice(idx, 1);
+  } else {
+    compareTray.push(id);
+  }
+  renderCompareBrowser();
+  renderCompareTray();
+}
+
+function renderCompareTray() {
+  const tray = document.getElementById('compareTray');
+  const btn = document.getElementById('btnRunCompare');
+  const selected = compareTray.map(id => activities.find(a => a.id === id)).filter(Boolean);
+
+  if (selected.length === 0) {
+    tray.innerHTML = '<span style="color:var(--text-dim);font-size:12px;align-self:center;padding:0 4px">Selecciona actividades de las carpetas de abajo ↓</span>';
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+    return;
+  }
+
+  const COLORS = ['#00e5ff','#ff4757','#2ed573','#ffa502','#ff6b35','#a29bfe'];
+  tray.innerHTML = selected.map((a, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--surface);border:1px solid ${COLORS[i%COLORS.length]};border-radius:20px;font-size:12px">
+      <span style="width:8px;height:8px;border-radius:50%;background:${COLORS[i%COLORS.length]};flex-shrink:0"></span>
+      <span style="color:var(--text)">${a.name.length > 22 ? a.name.substring(0,22)+'…' : a.name}</span>
+      <span class="mono" style="color:var(--z5);font-size:11px">${a.max}bpm</span>
+      <span style="cursor:pointer;color:var(--text-dim);font-size:14px;line-height:1" onclick="toggleCompareTray('${a.id}')">×</span>
+    </div>
   `).join('');
+
+  btn.disabled = selected.length < 2;
+  btn.style.opacity = selected.length < 2 ? '0.4' : '1';
+}
+
+function clearCompareTray() {
+  compareTray = [];
+  renderCompareBrowser();
+  renderCompareTray();
+  document.getElementById('compareResults').style.display = 'none';
 }
 
 function runComparison() {
-  const selected = Array.from(document.querySelectorAll('.compare-cb:checked')).map(cb => activities[parseInt(cb.value)]);
+  const selected = compareTray.map(id => activities.find(a => a.id === id)).filter(Boolean);
   if (selected.length < 2) { alert('Selecciona al menos 2 actividades'); return; }
 
   document.getElementById('compareResults').style.display = 'block';
+  document.getElementById('compareResults').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
   renderCompareMaxChart(selected);
   renderCompareZoneChart(selected);
@@ -2191,8 +2279,6 @@ function renderCompareZoneChart(selected) {
 }
 
 function renderCompareTable(selected) {
-  const zones = getZones();
-
   document.getElementById('compareTableHead').innerHTML = `
     <tr>
       <th>Parámetro</th>
@@ -2208,6 +2294,7 @@ function renderCompareTable(selected) {
     ['Zona predominante', a => { const t=a.zoneTimes; return `Z${t.indexOf(Math.max(...t))+1}`; }],
     ['Tiempo Z4+Z5', a => { const tot=a.zoneTimes.reduce((s,v)=>s+v,0)||1; return `${Math.round((a.zoneTimes[3]+a.zoneTimes[4])/tot*100)}%`; }],
     ['Duración', a => `${a.duration} min`],
+    ['Fecha', a => a.startTime.toLocaleDateString('es-ES')],
   ];
 
   document.getElementById('compareTableBody').innerHTML = rows.map(([label, fn]) => `
@@ -2225,11 +2312,9 @@ function renderCompareLineChart(selected) {
   const datasets = selected.map((a, i) => {
     const step = Math.max(1, Math.floor(a.hrData.length / 200));
     const data = a.hrData.filter((_,j) => j % step === 0);
-    const pct = data.map((_, j) => Math.round(j * 100 / data.length));
-
     return {
       label: a.name.substring(0, 22),
-      data: data,
+      data,
       borderColor: COMPARE_COLORS[i % COMPARE_COLORS.length],
       backgroundColor: 'transparent',
       borderWidth: 1.5,
@@ -2238,7 +2323,6 @@ function renderCompareLineChart(selected) {
     };
   });
 
-  // Normalize to % of activity
   const maxLen = Math.max(...selected.map(a => Math.ceil(a.hrData.length / Math.max(1, Math.floor(a.hrData.length / 200)))));
   const labels = Array.from({length: maxLen}, (_, i) => `${Math.round(i * 100 / maxLen)}%`);
 
